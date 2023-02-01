@@ -6,7 +6,7 @@ import (
 
 func main() {
 	K := NewKemono(
-		WithUsers("70050825", "fanbox"),
+		WithUsers("123456", "service", "654321", "service2"),
 		WithPostFilter(
 			ReleaseDateFilter(time.Now().AddDate(0, 0, -365), time.Now()),
 		),
