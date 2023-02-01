@@ -17,7 +17,7 @@ K := NewKemono(
 			ExtensionFilter(".jpg", ".png", ".zip"),
 		),
         SetDownloader(NewDownloader(
-        Async(true),
+        	Async(true),
         ),
         ), 
 )
