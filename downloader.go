@@ -1,4 +1,4 @@
-package main
+package kemono_scraper
 
 import (
 	"context"

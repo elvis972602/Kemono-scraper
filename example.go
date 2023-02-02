@@ -1,4 +1,4 @@
-package main
+package kemono_scraper
 
 import (
 	"fmt"
@@ -34,10 +34,10 @@ func main() {
 			"accept-language": "ja-JP;q=0.8,ja;q=0.7,en-US;q=0.6,en;q=0.5",
 		}),
 		RateLimit(2),
-		Retry(3),
+		Retry(5),
 	)
 	K := NewKemono(
-		WithUsers("123456", "service", "654321", "service2"),
+		WithUsers("74671556", "fanbox"),
 		WithBanner(true),
 		WithPostFilter(
 			ReleaseDateFilter(time.Now().AddDate(0, 0, -365), time.Now()),

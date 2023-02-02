@@ -1,4 +1,4 @@
-package main
+package kemono_scraper
 
 import (
 	"fmt"
@@ -264,6 +264,17 @@ func (k *Kemono) FilterAttachments(attachments []File) []File {
 func ReleaseDateFilter(from, to time.Time) PostFilter {
 	return func(i int, post Post) bool {
 		return post.Published.After(from) && post.Published.Before(to)
+	}
+}
+
+func IdFilter(ids ...string) PostFilter {
+	return func(i int, post Post) bool {
+		for _, id := range ids {
+			if id == post.Id {
+				return true
+			}
+		}
+		return false
 	}
 }
 
