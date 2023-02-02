@@ -54,6 +54,14 @@ func NewKemono(options ...Option) *Kemono {
 	if k.Downloader == nil {
 		k.Downloader = NewDownloader(
 			BaseURL(fmt.Sprintf("https://%s.party", k.site)),
+			Async(true),
+			RateLimit(2),
+			WithHeader(Header{
+				"User-Agent":      UserAgent,
+				"Referer":         fmt.Sprintf("https://%s.party", k.site),
+				"accept-encoding": "gzip, deflate, br",
+				"accept-language": "ja-JP;q=0.8,ja;q=0.7,en-US;q=0.6,en;q=0.5",
+			}),
 		)
 	}
 	return k

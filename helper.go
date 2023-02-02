@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 func SplitHash(str string) (string, error) {
@@ -61,4 +62,55 @@ func ValidDirectoryName(name string) string {
 	} else {
 		return name
 	}
+}
+
+type semaphore chan struct{}
+
+func newSemaphore(n int) semaphore {
+	return make(semaphore, n)
+}
+
+func (s semaphore) acquire() {
+	s <- struct{}{}
+}
+
+func (s semaphore) release() {
+	<-s
+}
+
+type rateLimiter struct {
+	limit     int
+	semaphore semaphore
+}
+
+func newRateLimiter(tokenPreSecond int) *rateLimiter {
+	r := &rateLimiter{
+		limit:     tokenPreSecond,
+		semaphore: newSemaphore(tokenPreSecond),
+	}
+	r.Timing()
+	return r
+}
+
+// Timing add token into semaphore
+func (r *rateLimiter) Timing() {
+	t := time.NewTicker(time.Second)
+	// full semaphore
+	for i := 0; i < r.limit; i++ {
+		r.semaphore.acquire()
+	}
+	go func() {
+		for {
+			select {
+			case <-t.C:
+				for i := 0; i < r.limit; i++ {
+					r.semaphore.acquire()
+				}
+			}
+		}
+	}()
+}
+
+func (r *rateLimiter) Token() {
+	r.semaphore.release()
 }

@@ -16,7 +16,12 @@ import (
 const (
 	maxConcurrent = 5
 	maxConnection = 16
+	rateLimit     = 2
+	UserAgent     = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+	Accept        = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
 )
+
+type Header map[string]string
 
 type Downloader interface {
 	Download(<-chan FileWithIndex, Creator, Post) <-chan error
@@ -40,7 +45,13 @@ type downloader struct {
 	// timeout
 	Timeout time.Duration
 
-	AllowType []string
+	reteLimiter *rateLimiter
+
+	Header Header
+
+	cookies chan []*http.Cookie
+
+	retry int
 }
 
 func NewDownloader(options ...DownloadOption) Downloader {
@@ -50,7 +61,9 @@ func NewDownloader(options ...DownloadOption) Downloader {
 		MaxConnection: maxConnection,
 		SavePath:      defaultSavePath,
 		Timeout:       300 * time.Second,
-		Async:         true,
+		Async:         false,
+		reteLimiter:   newRateLimiter(rateLimit),
+		retry:         2,
 	}
 	for _, option := range options {
 		option(d)
@@ -58,6 +71,10 @@ func NewDownloader(options ...DownloadOption) Downloader {
 	if d.BaseURL == "" {
 		panic("base url is empty")
 	}
+	if !d.Async {
+		d.MaxConcurrent = 1
+	}
+	d.cookies = make(chan []*http.Cookie, d.MaxConcurrent)
 	return d
 }
 
@@ -82,6 +99,19 @@ func Timeout(timeout time.Duration) DownloadOption {
 	}
 }
 
+// limit the rate of download per second
+func RateLimit(n int) DownloadOption {
+	return func(d *downloader) {
+		d.reteLimiter = newRateLimiter(n)
+	}
+}
+
+func WithHeader(header Header) DownloadOption {
+	return func(d *downloader) {
+		d.Header = header
+	}
+}
+
 func SavePath(savePath func(creator Creator, post Post, i int, attachment File) string) DownloadOption {
 	return func(d *downloader) {
 		d.SavePath = savePath
@@ -99,19 +129,21 @@ func Async(async bool) DownloadOption {
 	}
 }
 
+func Retry(retry int) DownloadOption {
+	return func(d *downloader) {
+		d.retry = retry
+	}
+}
+
 func (d *downloader) Download(files <-chan FileWithIndex, creator Creator, post Post) <-chan error {
 
 	//TODO: implement download
 	var (
-		wg            sync.WaitGroup
-		maxConcurrent = 1
-		errCh         = make(chan error, len(files))
+		wg    sync.WaitGroup
+		errCh = make(chan error, len(files))
 	)
-	if d.Async {
-		maxConcurrent = d.MaxConcurrent
-	}
 
-	for i := 0; i < maxConcurrent; i++ {
+	for i := 0; i < d.MaxConcurrent; i++ {
 		wg.Add(1)
 		go func() {
 			for {
@@ -174,31 +206,62 @@ func (d *downloader) download(filePath, url, fileHash string) error {
 
 // download the file from the url, and save to the file
 func (d *downloader) downloadFile(file *os.File, url string) error {
+	d.reteLimiter.Token()
+
 	log.Printf("downloading file %s", url)
 	ctx, cancel := context.WithTimeout(context.Background(), d.Timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := newGetRequest(ctx, d.Header, url)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("new request error: %w", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to make request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download file: %d", resp.StatusCode)
-	}
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+	if len(d.cookies) > 0 {
+		c, ok := <-d.cookies
+		if ok {
+			for _, cookie := range c {
+				req.AddCookie(cookie)
+			}
+		}
 	}
 
-	return nil
+	var get func(retry int) error
+
+	get = func(retry int) error {
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to make request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("failed to download file: %d", resp.StatusCode)
+		}
+
+		// 429 too many requests
+		if resp.StatusCode == http.StatusTooManyRequests {
+			if retry > 0 {
+				log.Printf("request too many times, retry after 10 seconds...")
+				time.Sleep(10 * time.Second)
+				return get(retry - 1)
+			} else {
+				return fmt.Errorf("failed to download file: %d", resp.StatusCode)
+			}
+		}
+
+		if len(resp.Cookies()) < d.MaxConcurrent {
+			d.cookies <- resp.Cookies()
+		}
+
+		_, err = io.Copy(file, resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to write file: %w", err)
+		}
+		return nil
+	}
+
+	return get(d.retry)
 
 }
 
@@ -248,4 +311,16 @@ func checkFileExitAndComplete(filePath, fileHash string) (file *os.File, complet
 		}
 	}
 	return file, false, nil
+}
+
+func newGetRequest(ctx context.Context, header Header, url string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	// set headers
+	for k, v := range header {
+		req.Header.Set(k, v)
+	}
+	return req, nil
 }
