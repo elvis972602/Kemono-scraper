@@ -19,9 +19,9 @@ type Option func(*Kemono)
 
 type Kemono struct {
 	// kemono or coomer ...
-	site string
-	//download banner
-	banner bool
+	Site string
+	//download Banner
+	Banner bool
 	// All Creator
 	creators []Creator
 
@@ -44,8 +44,8 @@ type Kemono struct {
 
 func NewKemono(options ...Option) *Kemono {
 	k := &Kemono{
-		site:   "kemono",
-		banner: true,
+		Site:   "kemono",
+		Banner: true,
 	}
 	for _, option := range options {
 		option(k)
@@ -53,12 +53,12 @@ func NewKemono(options ...Option) *Kemono {
 	// lazy initialize downloader
 	if k.Downloader == nil {
 		k.Downloader = NewDownloader(
-			BaseURL(fmt.Sprintf("https://%s.party", k.site)),
+			BaseURL(fmt.Sprintf("https://%s.party", k.Site)),
 			Async(true),
 			RateLimit(2),
 			WithHeader(Header{
 				"User-Agent":      UserAgent,
-				"Referer":         fmt.Sprintf("https://%s.party", k.site),
+				"Referer":         fmt.Sprintf("https://%s.party", k.Site),
 				"accept-encoding": "gzip, deflate, br",
 				"accept-language": "ja-JP;q=0.8,ja;q=0.7,en-US;q=0.6,en;q=0.5",
 			}),
@@ -67,16 +67,16 @@ func NewKemono(options ...Option) *Kemono {
 	return k
 }
 
-// WithDomain Set site
+// WithDomain Set Site
 func WithDomain(web string) Option {
 	return func(k *Kemono) {
-		k.site = web
+		k.Site = web
 	}
 }
 
 func WithBanner(banner bool) Option {
 	return func(k *Kemono) {
-		k.banner = banner
+		k.Banner = banner
 	}
 }
 
@@ -174,7 +174,7 @@ func (k *Kemono) Start() {
 
 		// filter attachments
 		for i, post := range posts {
-			if k.banner {
+			if k.Banner {
 				res := make([]File, len(post.Attachments)+1)
 				copy(res[1:], post.Attachments)
 				res[0] = post.File

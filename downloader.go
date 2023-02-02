@@ -40,6 +40,8 @@ type downloader struct {
 	// may cause the file order is not the same as the post order
 	Async bool
 
+	OverWrite bool
+
 	// SavePath return the path to save the file
 	SavePath func(creator Creator, post Post, i int, attachment File) string
 	// timeout
@@ -129,6 +131,13 @@ func Async(async bool) DownloadOption {
 	}
 }
 
+// OverWrite set the overwrite option
+func OverWrite(overwrite bool) DownloadOption {
+	return func(d *downloader) {
+		d.OverWrite = overwrite
+	}
+}
+
 func Retry(retry int) DownloadOption {
 	return func(d *downloader) {
 		d.retry = retry
@@ -184,19 +193,33 @@ func (d *downloader) Download(files <-chan FileWithIndex, creator Creator, post 
 // download downloads the file from the url
 func (d *downloader) download(filePath, url, fileHash string) error {
 	// check if the file exists
-	f, complete, err := checkFileExitAndComplete(filePath, fileHash)
-	defer f.Close()
-	if err != nil {
-		err = errors.New("check file error: " + err.Error())
-		return err
-	}
-	if complete {
-		log.Printf("file %s already exists, skip", filePath)
-		return nil
+	var (
+		f        *os.File
+		complete bool
+		err      error
+	)
+	if !d.OverWrite {
+		f, complete, err = checkFileExitAndComplete(filePath, fileHash)
+		defer f.Close()
+		if err != nil {
+			err = errors.New("check file error: " + err.Error())
+			return err
+		}
+		if complete {
+			log.Printf("file %s already exists, skip", filePath)
+			return nil
+		}
+	} else {
+		f, err = os.Create(filePath)
+		defer f.Close()
+		if err != nil {
+			err = errors.New("create file error: " + err.Error())
+			return err
+		}
 	}
 	// download the file
 
-	if err = d.downloadFile(f, url); err != nil {
+	if err := d.downloadFile(f, url); err != nil {
 		err = errors.New("download file error: " + err.Error())
 		return err
 	}
