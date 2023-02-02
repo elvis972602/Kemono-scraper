@@ -267,6 +267,41 @@ func ReleaseDateFilter(from, to time.Time) PostFilter {
 	}
 }
 
+// ReleaseDateAfterFilter A Post  filter that filters posts with release date after
+func ReleaseDateAfterFilter(from time.Time) PostFilter {
+	return func(i int, post Post) bool {
+		return post.Published.After(from)
+	}
+}
+
+// ReleaseDateBeforeFilter A Post  filter that filters posts with release date before
+func ReleaseDateBeforeFilter(to time.Time) PostFilter {
+	return func(i int, post Post) bool {
+		return post.Published.Before(to)
+	}
+}
+
+// EditDateFilter A Post  filter that filters posts with edit date
+func EditDateFilter(from, to time.Time) PostFilter {
+	return func(i int, post Post) bool {
+		return post.Edited.After(from) && post.Edited.Before(to)
+	}
+}
+
+// EditDateAfterFilter A Post  filter that filters posts with edit date after
+func EditDateAfterFilter(from time.Time) PostFilter {
+	return func(i int, post Post) bool {
+		return post.Edited.After(from)
+	}
+}
+
+// EditDateBeforeFilter A Post  filter that filters posts with edit date before
+func EditDateBeforeFilter(to time.Time) PostFilter {
+	return func(i int, post Post) bool {
+		return post.Edited.Before(to)
+	}
+}
+
 func IdFilter(ids ...string) PostFilter {
 	return func(i int, post Post) bool {
 		for _, id := range ids {
@@ -295,5 +330,18 @@ func ExtensionFilter(extension ...string) AttachmentFilter {
 			}
 		}
 		return false
+	}
+}
+
+// ExtensionExcludeFilter A attachmentFilter filter that filters attachments without a specific extension
+func ExtensionExcludeFilter(extension ...string) AttachmentFilter {
+	return func(i int, attachment File) bool {
+		ext := filepath.Ext(attachment.Name)
+		for _, e := range extension {
+			if ext == e {
+				return false
+			}
+		}
+		return true
 	}
 }
