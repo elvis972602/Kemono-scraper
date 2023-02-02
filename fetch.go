@@ -76,10 +76,10 @@ func (k *Kemono) DownloadPosts(creator Creator, posts []Post) (err error) {
 	for _, post := range posts {
 		log.Println("download post: ", post.Title)
 		var (
-			attachmentsChan = make(chan File, len(post.Attachments))
+			attachmentsChan = make(chan FileWithIndex, len(post.Attachments))
 		)
-		for _, a := range post.Attachments {
-			attachmentsChan <- a
+		for i, a := range post.Attachments {
+			attachmentsChan <- a.Index(i)
 		}
 		errChan := k.Downloader.Download(attachmentsChan, creator, post)
 		for i := 0; i < len(errChan); i++ {

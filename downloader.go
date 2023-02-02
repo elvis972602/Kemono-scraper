@@ -19,10 +19,10 @@ const (
 )
 
 type Downloader interface {
-	Download(<-chan File, Creator, Post) <-chan error
+	Download(<-chan FileWithIndex, Creator, Post) <-chan error
 }
 
-type DownloadOptions func(*downloader)
+type DownloadOption func(*downloader)
 
 type downloader struct {
 	BaseURL string
@@ -36,14 +36,14 @@ type downloader struct {
 	Async bool
 
 	// SavePath return the path to save the file
-	SavePath func(creator Creator, post Post, attachment File) string
+	SavePath func(creator Creator, post Post, i int, attachment File) string
 	// timeout
 	Timeout time.Duration
 
 	AllowType []string
 }
 
-func NewDownloader(options ...DownloadOptions) Downloader {
+func NewDownloader(options ...DownloadOption) Downloader {
 	// with default options
 	d := &downloader{
 		MaxConcurrent: maxConcurrent,
@@ -55,41 +55,51 @@ func NewDownloader(options ...DownloadOptions) Downloader {
 	for _, option := range options {
 		option(d)
 	}
+	if d.BaseURL == "" {
+		panic("base url is empty")
+	}
 	return d
 }
 
 // BaseURL set the base url
-func BaseURL(baseURL string) DownloadOptions {
+func BaseURL(baseURL string) DownloadOption {
 	return func(d *downloader) {
 		d.BaseURL = baseURL
 	}
 }
 
 // MaxConcurrent set the max concurrent download
-func MaxConcurrent(maxConcurrent int) DownloadOptions {
+func MaxConcurrent(maxConcurrent int) DownloadOption {
 	return func(d *downloader) {
 		d.MaxConcurrent = maxConcurrent
 	}
 }
 
-func SavePath(savePath func(creator Creator, post Post, attachment File) string) DownloadOptions {
+// Timeout set the timeout
+func Timeout(timeout time.Duration) DownloadOption {
+	return func(d *downloader) {
+		d.Timeout = timeout
+	}
+}
+
+func SavePath(savePath func(creator Creator, post Post, i int, attachment File) string) DownloadOption {
 	return func(d *downloader) {
 		d.SavePath = savePath
 	}
 }
 
-func defaultSavePath(creator Creator, post Post, attachment File) string {
+func defaultSavePath(creator Creator, post Post, i int, attachment File) string {
 	return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), ValidDirectoryName(creator.Name), ValidDirectoryName(post.Title), ValidDirectoryName(attachment.Name))
 }
 
 // Async set the async download option
-func Async(async bool) DownloadOptions {
+func Async(async bool) DownloadOption {
 	return func(d *downloader) {
 		d.Async = async
 	}
 }
 
-func (d *downloader) Download(files <-chan File, creator Creator, post Post) <-chan error {
+func (d *downloader) Download(files <-chan FileWithIndex, creator Creator, post Post) <-chan error {
 
 	//TODO: implement download
 	var (
@@ -115,7 +125,7 @@ func (d *downloader) Download(files <-chan File, creator Creator, post Post) <-c
 						if err != nil {
 							hash = ""
 						}
-						savePath := d.SavePath(creator, post, file)
+						savePath := d.SavePath(creator, post, file.Index, file.File)
 						err = os.MkdirAll(filepath.Dir(savePath), os.ModePerm)
 						if err != nil {
 							errCh <- errors.New("create directory error: " + err.Error())
@@ -158,6 +168,7 @@ func (d *downloader) download(filePath, url, fileHash string) error {
 		err = errors.New("download file error: " + err.Error())
 		return err
 	}
+	time.Sleep(1 * time.Second)
 	return nil
 }
 

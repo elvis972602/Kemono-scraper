@@ -53,6 +53,18 @@ func (f File) GetHash() (string, error) {
 	return SplitHash(f.Path)
 }
 
+func (f File) Index(n int) FileWithIndex {
+	return FileWithIndex{
+		Index: n,
+		File:  f,
+	}
+}
+
+type FileWithIndex struct {
+	Index int
+	File
+}
+
 type PostRaw struct {
 	Added       string      `json:"added"`
 	Attachments []File      `json:"attachments"`
