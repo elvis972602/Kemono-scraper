@@ -20,6 +20,8 @@ type Option func(*Kemono)
 type Kemono struct {
 	// kemono or coomer ...
 	site string
+	//download banner
+	banner bool
 	// All Creator
 	creators []Creator
 
@@ -36,16 +38,14 @@ type Kemono struct {
 	// If not specified, all creators will be selected
 	users []Creator
 
-	// withuser flag t prevent download all when user is not exist
-	withuser bool
-
 	// downloader
 	Downloader Downloader
 }
 
 func NewKemono(options ...Option) *Kemono {
 	k := &Kemono{
-		site: "kemono",
+		site:   "kemono",
+		banner: true,
 	}
 	for _, option := range options {
 		option(k)
@@ -66,6 +66,13 @@ func WithDomain(web string) Option {
 	}
 }
 
+func WithBanner(banner bool) Option {
+	return func(k *Kemono) {
+		k.banner = banner
+	}
+}
+
+// Custom the creator list
 func WithCreators(creators []Creator) Option {
 	return func(k *Kemono) {
 		k.creators = creators
@@ -75,8 +82,6 @@ func WithCreators(creators []Creator) Option {
 // WithUsers Select a specific creator, if not specified, all creators will be selected
 func WithUsers(idServicePairs ...string) Option {
 	return func(k *Kemono) {
-		k.withuser = true
-
 		if len(idServicePairs)%2 != 0 {
 			panic("idServicePairs must be even")
 		}
@@ -141,13 +146,10 @@ func (k *Kemono) Start() {
 			exit = append(exit, c)
 		}
 		k.users = exit
-	}
-
-	// check selected creators
-	if !k.withuser && len(k.users) <= 0 {
-		// if not specified, all creators will be selected
+	} else {
 		k.users = k.creators
 	}
+
 	// Filter selected creators
 	k.users = k.FilterCreators(k.users)
 
@@ -164,6 +166,12 @@ func (k *Kemono) Start() {
 
 		// filter attachments
 		for i, post := range posts {
+			if k.banner {
+				res := make([]File, len(post.Attachments)+1)
+				copy(res[1:], post.Attachments)
+				res[0] = post.File
+				post.Attachments = res
+			}
 			posts[i].Attachments = k.FilterAttachments(post.Attachments)
 		}
 
