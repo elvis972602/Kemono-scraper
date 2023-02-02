@@ -235,10 +235,6 @@ func (d *downloader) downloadFile(file *os.File, url string) error {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("failed to download file: %d", resp.StatusCode)
-		}
-
 		// 429 too many requests
 		if resp.StatusCode == http.StatusTooManyRequests {
 			if retry > 0 {
@@ -248,6 +244,10 @@ func (d *downloader) downloadFile(file *os.File, url string) error {
 			} else {
 				return fmt.Errorf("failed to download file: %d", resp.StatusCode)
 			}
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("failed to download file: %d", resp.StatusCode)
 		}
 
 		if len(resp.Cookies()) < d.MaxConcurrent {
