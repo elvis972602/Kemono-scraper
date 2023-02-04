@@ -94,12 +94,20 @@ func WithUsers(idServicePairs ...string) Option {
 			panic("idServicePairs must be even")
 		}
 		for i := 0; i < len(idServicePairs); i += 2 {
-			k.users = append(k.users, Creator{
-				Id:      idServicePairs[i],
-				Service: idServicePairs[i+1],
-			})
+			exist := false
+			for _, c := range k.users {
+				if c.Id == idServicePairs[i] && c.Service == idServicePairs[i+1] {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				k.users = append(k.users, Creator{
+					Id:      idServicePairs[i],
+					Service: idServicePairs[i+1],
+				})
+			}
 		}
-		log.Printf("Select %d creators", len(k.users))
 	}
 }
 
