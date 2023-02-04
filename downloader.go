@@ -54,6 +54,8 @@ type downloader struct {
 	cookies chan []*http.Cookie
 
 	retry int
+
+	retryInterval time.Duration
 }
 
 func NewDownloader(options ...DownloadOption) Downloader {
@@ -141,6 +143,12 @@ func OverWrite(overwrite bool) DownloadOption {
 func Retry(retry int) DownloadOption {
 	return func(d *downloader) {
 		d.retry = retry
+	}
+}
+
+func RetryInterval(interval time.Duration) DownloadOption {
+	return func(d *downloader) {
+		d.retryInterval = interval
 	}
 }
 
@@ -261,8 +269,8 @@ func (d *downloader) downloadFile(file *os.File, url string) error {
 		// 429 too many requests
 		if resp.StatusCode == http.StatusTooManyRequests {
 			if retry > 0 {
-				log.Printf("request too many times, retry after 10 seconds...")
-				time.Sleep(10 * time.Second)
+				log.Printf("request too many times, retry after %.1f seconds...", d.retryInterval.Seconds())
+				time.Sleep(d.retryInterval)
 				return get(retry - 1)
 			} else {
 				return fmt.Errorf("failed to download file: %d", resp.StatusCode)
