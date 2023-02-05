@@ -4,7 +4,7 @@ A simple scraper to  filter and download images from kemono.party
 ## Downloader Released
 Source code is in `./main`
 
-## Usage
+## Flag Option
 
 ### Download Option
 `--link [<urls>]`  
@@ -12,6 +12,7 @@ download link, should be same site, separate by comma
 `--creator [<service>:<id>]`  
 download creators, separate by comma  
 `--banner bool`  
+download banner, default is false
 
 ### Post Filter Option
 `--first int`  
@@ -29,9 +30,9 @@ download post updated on date
 `--update-before YYYYMMDD`  
 download post updated before date  
 `--update-after YYYYMMDD`  
+download post updated after date
 
 ### Image Filter Option
-download post updated after date  
 `--extensionOnly [<ext>]`  
 download post with extension, separate by comma  
 `--extensionExcept [<ext>]`  
@@ -58,6 +59,17 @@ retry times, default 3
 retry interval in seconds, default 10  
 `--rate-limit int`  
 rate limit in request/s, default 2
+
+## Config File
+config file is in `./config.yaml`  
+Option in config is same as flag option, but without `--` prefix, and will be overridden by flag option .Can set the not often changed option in config file, and use flag option to override it  
+Example:  
+```yaml
+banner: true
+async: true
+max-download-parallel: 5
+with-prefix-number: true
+```
 
 ## Features
 With Kemono-scraper, you can implement a Downloader to take advantage of features such as multi-connection downloading, resume broken downloads, and more.
