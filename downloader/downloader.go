@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/elvis972602/kemono-scraper/kemono"
-	"github.com/elvis972602/kemono-scraper/term"
 	"github.com/elvis972602/kemono-scraper/utils"
 	"net/http"
 	"os"
@@ -76,7 +75,6 @@ func NewDownloader(options ...DownloadOption) kemono.Downloader {
 		Async:         false,
 		reteLimiter:   utils.NewRateLimiter(rateLimit),
 		retry:         2,
-		progressBar:   utils.NewProgressBar(term.NewTerminal(os.Stdout, os.Stderr, false)),
 	}
 	for _, option := range options {
 		option(d)
