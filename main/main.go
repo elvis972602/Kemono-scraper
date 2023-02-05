@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	kemono "github.com/elvis972602/kemono-scraper"
+	"github.com/elvis972602/kemono-scraper/downloader"
+	"github.com/elvis972602/kemono-scraper/kemono"
+	"github.com/elvis972602/kemono-scraper/term"
+	"github.com/elvis972602/kemono-scraper/utils"
 	"log"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -26,7 +31,7 @@ func main() {
 		creators               []string
 		links                  []string
 		options                []kemono.Option
-		downloaderOptions      []kemono.DownloadOption
+		downloaderOptions      []downloader.DownloadOption
 		hasLink                bool
 		s, srv, userId, postId string
 	)
@@ -52,72 +57,74 @@ func main() {
 			links = append(links, l)
 		}
 	}
-	downloaderOptions = append(downloaderOptions, kemono.Async(async))
+	downloaderOptions = append(downloaderOptions, downloader.Async(async))
 
 	if len(links) > 0 {
 		hasLink = true
 		users := make([]string, 0)
-		ids := make([]string, 0)
-		ss := ""
+		ids := make(map[string][]string, 0)
 		for i, l := range links {
 			s, srv, userId, postId = parasLink(l)
 			if i == 0 {
-				ss = s
+				site = s
 			} else {
-				if s != ss {
-					log.Fatalf("site %s is not match %s", s, ss)
+				if s != site {
+					log.Fatalf("site %s is not match %s", s, site)
 				}
 			}
-			users = append(users, userId, srv)
-			ids = append(ids, postId)
+			cs := kemono.NewCreator(srv, userId).PairString()
+			users = append(users, srv, userId)
+			if postId != "" {
+				ids[cs] = append(ids[cs], postId)
+			}
 		}
 		options = append(options,
 			kemono.WithDomain(s),
-			kemono.WithUsers(users...),
-			kemono.WithPostFilter(
-				kemono.IdFilter(ids...),
-			),
+			kemono.WithUsersPair(users...),
 		)
-		downloaderOptions = append(downloaderOptions, kemono.BaseURL(fmt.Sprintf("https://%s.party", s)))
-	}
-
-	// check site
-	if site != "" {
-		if hasLink {
-			if site != s {
-				log.Fatalf("site %s not match link %s", site, link)
+		for i := 0; i < len(users); i += 2 {
+			cs := kemono.NewCreator(users[i], users[i+1]).PairString()
+			if len(ids[cs]) == 0 {
+				continue
 			}
-		} else {
-			options = append(options, kemono.WithDomain(site))
-			downloaderOptions = append(downloaderOptions, kemono.BaseURL(fmt.Sprintf("https://%s.party", site)))
+			options = append(options,
+				kemono.WithUserPostFilter(kemono.NewCreator(users[i], users[i+1]),
+					kemono.IdFilter(ids[cs]...)))
 		}
-	} else {
-		if !hasLink {
-			site = "kemono"
-			options = append(options, kemono.WithDomain(site))
-			downloaderOptions = append(downloaderOptions, kemono.BaseURL(fmt.Sprintf("https://%s.party", site)))
-
-		}
+		downloaderOptions = append(downloaderOptions, downloader.BaseURL(fmt.Sprintf("https://%s.party", s)))
 	}
 
 	// check creator
 	if len(creators) > 0 {
 		users := make([]string, 0)
-		for _, c := range creators {
+		for i, c := range creators {
 			creatorComponents := strings.Split(c, ":")
 			if len(creatorComponents) != 2 {
 				log.Fatalf("invalid creator %s", c)
 			}
-			users = append(users, creatorComponents[1], creatorComponents[0])
+			if i == 0 && site == "" {
+				site = kemono.SiteMap[creatorComponents[0]]
+			} else {
+				if site != kemono.SiteMap[creatorComponents[0]] {
+					log.Fatalf("site %s not match creator %s", site, creatorComponents[0])
+				}
+			}
+			users = append(users, creatorComponents[0], creatorComponents[1])
 		}
-		options = append(options, kemono.WithUsers(users...))
+		options = append(options, kemono.WithUsersPair(users...))
+		if !hasLink {
+			options = append(options, kemono.WithDomain(site))
+			downloaderOptions = append(downloaderOptions, downloader.BaseURL(fmt.Sprintf("https://%s.party", site)))
+		}
+	} else if !hasLink {
+		log.Fatal("creator is empty")
 	}
 
 	// banner
 	options = append(options, kemono.WithBanner(banner))
 
 	// overwrite
-	downloaderOptions = append(downloaderOptions, kemono.OverWrite(overwrite))
+	downloaderOptions = append(downloaderOptions, downloader.OverWrite(overwrite))
 
 	// check first
 	if first != 0 {
@@ -143,43 +150,43 @@ func main() {
 		))
 	}
 
-	if data != "" {
-		t := parasData(data)
+	if date != 0 {
+		t := parasData(strconv.Itoa(date))
 		options = append(options, kemono.WithPostFilter(
 			kemono.ReleaseDateFilter(t.Add(-1), t.Add(24*time.Hour-1)),
 		))
 	}
 
-	if dataBefore != "" {
-		t := parasData(dataBefore)
+	if dateBefore != 0 {
+		t := parasData(strconv.Itoa(dateBefore))
 		options = append(options, kemono.WithPostFilter(
 			kemono.ReleaseDateBeforeFilter(t),
 		))
 	}
 
-	if dataAfter != "" {
-		t := parasData(dataAfter)
+	if dateAfter != 0 {
+		t := parasData(strconv.Itoa(dateAfter))
 		options = append(options, kemono.WithPostFilter(
 			kemono.ReleaseDateAfterFilter(t),
 		))
 	}
 
-	if update != "" {
-		t := parasData(update)
+	if update != 0 {
+		t := parasData(strconv.Itoa(update))
 		options = append(options, kemono.WithPostFilter(
 			kemono.EditDateFilter(t.Add(-1), t.Add(24*time.Hour-1)),
 		))
 	}
 
-	if updateBefore != "" {
-		t := parasData(updateBefore)
+	if updateBefore != 0 {
+		t := parasData(strconv.Itoa(updateBefore))
 		options = append(options, kemono.WithPostFilter(
 			kemono.EditDateBeforeFilter(t),
 		))
 	}
 
-	if updateAfter != "" {
-		t := parasData(updateAfter)
+	if updateAfter != 0 {
+		t := parasData(strconv.Itoa(updateAfter))
 		options = append(options, kemono.WithPostFilter(
 			kemono.EditDateAfterFilter(t),
 		))
@@ -224,7 +231,7 @@ func main() {
 			pathFunc = func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
 				ext := filepath.Ext(attachment.Name)
 				name := fmt.Sprintf("%d%s", i, ext)
-				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, kemono.ValidDirectoryName(creator.Name), kemono.ValidDirectoryName(post.Title), kemono.ValidDirectoryName(name))
+				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
 			}
 		}
 		if withPrefixNumber {
@@ -236,15 +243,15 @@ func main() {
 				} else {
 					name = fmt.Sprintf("%d-%s", i, attachment.Name)
 				}
-				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, kemono.ValidDirectoryName(creator.Name), kemono.ValidDirectoryName(post.Title), kemono.ValidDirectoryName(name))
+				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
 			}
 		}
 		if !ruleflag {
 			pathFunc = func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, kemono.ValidDirectoryName(creator.Name), kemono.ValidDirectoryName(post.Title), kemono.ValidDirectoryName(attachment.Name))
+				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(attachment.Name))
 			}
 		}
-		downloaderOptions = append(downloaderOptions, kemono.SavePath(pathFunc))
+		downloaderOptions = append(downloaderOptions, downloader.SavePath(pathFunc))
 	} else {
 		if withPrefixNumber {
 			var pathFunc func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string
@@ -255,9 +262,9 @@ func main() {
 				} else {
 					name = fmt.Sprintf("%d-%s", i, attachment.Name)
 				}
-				return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), kemono.ValidDirectoryName(creator.Name), kemono.ValidDirectoryName(post.Title), kemono.ValidDirectoryName(name))
+				return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
 			}
-			downloaderOptions = append(downloaderOptions, kemono.SavePath(pathFunc))
+			downloaderOptions = append(downloaderOptions, downloader.SavePath(pathFunc))
 		}
 
 		if nameRuleOnlyIndex {
@@ -265,50 +272,62 @@ func main() {
 			pathFunc = func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
 				ext := filepath.Ext(attachment.Name)
 				name := fmt.Sprintf("%d%s", i, ext)
-				return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), kemono.ValidDirectoryName(creator.Name), kemono.ValidDirectoryName(post.Title), kemono.ValidDirectoryName(name))
+				return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
 			}
-			downloaderOptions = append(downloaderOptions, kemono.SavePath(pathFunc))
+			downloaderOptions = append(downloaderOptions, downloader.SavePath(pathFunc))
 		}
 	}
 
 	if downloadTimeout <= 0 {
 		log.Fatalf("invalid download timeout %d", downloadTimeout)
 	} else {
-		downloaderOptions = append(downloaderOptions, kemono.Timeout(time.Duration(downloadTimeout)*time.Second))
+		downloaderOptions = append(downloaderOptions, downloader.Timeout(time.Duration(downloadTimeout)*time.Second))
 	}
 
 	if retry < 0 {
 		log.Fatalf("retry must be greater than 0")
 	} else {
-		downloaderOptions = append(downloaderOptions, kemono.Retry(retry))
+		downloaderOptions = append(downloaderOptions, downloader.Retry(retry))
 	}
 
 	if retryInterval < 0 {
 		log.Fatalf("retry interval must be greater than 0")
 	} else {
-		downloaderOptions = append(downloaderOptions, kemono.RetryInterval(time.Duration(retryInterval)*time.Second))
+		downloaderOptions = append(downloaderOptions, downloader.RetryInterval(time.Duration(retryInterval)*time.Second))
 	}
 
 	// check maxDownloadGoroutine
 	if maxDownloadParallel <= 0 {
 		log.Fatalf("maxDownloadParallel must be greater than 0")
 	} else {
-		downloaderOptions = append(downloaderOptions, kemono.MaxConcurrent(maxDownloadParallel))
+		downloaderOptions = append(downloaderOptions, downloader.MaxConcurrent(maxDownloadParallel))
 	}
 
 	if rateLimit <= 0 {
 		log.Fatalf("rate limit must be greater than 0")
 	} else {
-		downloaderOptions = append(downloaderOptions, kemono.RateLimit(rateLimit))
+		downloaderOptions = append(downloaderOptions, downloader.RateLimit(rateLimit))
 	}
 
-	downloader := kemono.NewDownloader(downloaderOptions...)
+	ctx := context.Background()
 
-	options = append(options, kemono.SetDownloader(downloader))
+	terminal := term.NewTerminal(os.Stdout, os.Stderr, false)
+	go terminal.Run(ctx)
+
+	downloaderOptions = append(downloaderOptions, downloader.SetLog(terminal))
+	options = append(options, kemono.SetLog(terminal))
+
+	download := downloader.NewDownloader(downloaderOptions...)
+
+	options = append(options, kemono.SetDownloader(download))
 
 	K := kemono.NewKemono(options...)
 
 	K.Start()
+
+	defer func() {
+		ctx.Done()
+	}()
 
 }
 
@@ -351,21 +370,21 @@ func parasLink(link string) (site, service, userId, postId string) {
 
 func parasData(data string) time.Time {
 	if len(data) != 8 {
-		log.Fatalf("invalid data %s", data)
+		log.Fatalf("invalid date %s", data)
 	}
 	year, err := strconv.Atoi(data[:4])
 	if err != nil {
-		log.Fatalf("invalid data %s", data)
+		log.Fatalf("invalid date %s", data)
 	}
 	month, err := strconv.Atoi(data[4:6])
 	if err != nil {
-		log.Fatalf("invalid data %s", data)
+		log.Fatalf("invalid date %s", data)
 	}
 	day, err := strconv.Atoi(data[6:])
 	if err != nil {
-		log.Fatalf("invalid data %s", data)
+		log.Fatalf("invalid date %s", data)
 	}
-	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.Local)
 }
 
 func setFlag() {
@@ -390,23 +409,23 @@ func setFlag() {
 	if !isFlagPassed("last") && config["last"] != nil {
 		last = config["last"].(int)
 	}
-	if !isFlagPassed("data") && config["data"] != nil {
-		data = config["data"].(string)
+	if !isFlagPassed("date") && config["date"] != nil {
+		date = config["date"].(int)
 	}
-	if !isFlagPassed("data-before") && config["data-before"] != nil {
-		data = config["data-before"].(string)
+	if !isFlagPassed("date-before") && config["date-before"] != nil {
+		date = config["date-before"].(int)
 	}
-	if !isFlagPassed("data-after") && config["data-after"] != nil {
-		data = config["data-after"].(string)
+	if !isFlagPassed("date-after") && config["date-after"] != nil {
+		date = config["date-after"].(int)
 	}
 	if !isFlagPassed("update") && config["update"] != nil {
-		update = config["update"].(string)
+		update = config["update"].(int)
 	}
 	if !isFlagPassed("update-before") && config["update-before"] != nil {
-		update = config["update-before"].(string)
+		update = config["update-before"].(int)
 	}
 	if !isFlagPassed("update-after") && config["update-after"] != nil {
-		update = config["update-after"].(string)
+		update = config["update-after"].(int)
 	}
 	if !isFlagPassed("extension-only") && config["extension-only"] != nil {
 		extensionOnly = config["extension-only"].(string)
@@ -442,4 +461,8 @@ func setFlag() {
 	if !isFlagPassed("rate-limit") && config["rate-limit"] != nil {
 		rateLimit = config["rate-limit"].(int)
 	}
+}
+
+func DirectoryName(p kemono.Post) string {
+	return fmt.Sprintf("[%s][%s]%s", p.Published.Format("20060102"), p.Id, p.Title)
 }

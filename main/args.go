@@ -28,18 +28,18 @@ var (
 	first int
 	// last n posts
 	last int
-	// data
-	data string
-	//data before
-	dataBefore string
-	//data after
-	dataAfter string
+	// date
+	date int
+	//date before
+	dateBefore int
+	//date after
+	dateAfter int
 	// update
-	update string
+	update int
 	//update before
-	updateBefore string
+	updateBefore int
 	//update after
-	updateAfter string
+	updateAfter int
 	// extension only
 	extensionOnly string
 	// extension exclude
@@ -71,7 +71,6 @@ var config map[string]interface{}
 func init() {
 	flag.BoolVar(&help, "help", false, "show all usage")
 	flag.StringVar(&link, "link", "", "download link, should be same site, separate by comma")
-	flag.StringVar(&site, "site", "", "download site, should be same as link")
 	flag.StringVar(&creator, "creator", "", "--creator <service>:<id>, separate by comma")
 	flag.BoolVar(&banner, "banner", false, "if download banner")
 
@@ -79,12 +78,12 @@ func init() {
 	flag.BoolVar(&overwrite, "overwrite", false, "if overwrite file")
 	flag.IntVar(&first, "first", 0, "download first n posts")
 	flag.IntVar(&last, "last", 0, "download last n posts")
-	flag.StringVar(&data, "data", "", "--data YYYYMMDD (notice: data in website is GMT+0)")
-	flag.StringVar(&dataBefore, "data-before", "", "--data-before YYYYMMDD, select posts before YYYYMMDD")
-	flag.StringVar(&dataAfter, "data-after", "", "--data-after YYYYMMDD, select posts after YYYYMMDD")
-	flag.StringVar(&update, "update", "", "--update YYYYMMDD (notice: data in website is GMT+0)")
-	flag.StringVar(&updateBefore, "update-before", "", "--update-before YYYYMMDD, select posts updated before YYYYMMDD")
-	flag.StringVar(&updateAfter, "update-after", "", "--update-after YYYYMMDD, select posts updated after YYYYMMDD")
+	flag.IntVar(&date, "date", 0, "--date YYYYMMDD (notice: date in website is GMT+0)")
+	flag.IntVar(&dateBefore, "date-before", 0, "--date-before YYYYMMDD, select posts before YYYYMMDD")
+	flag.IntVar(&dateAfter, "date-after", 0, "--date-after YYYYMMDD, select posts after YYYYMMDD")
+	flag.IntVar(&update, "update", 0, "--update YYYYMMDD (notice: date in website is GMT+0)")
+	flag.IntVar(&updateBefore, "update-before", 0, "--update-before YYYYMMDD, select posts updated before YYYYMMDD")
+	flag.IntVar(&updateAfter, "update-after", 0, "--update-after YYYYMMDD, select posts updated after YYYYMMDD")
 	flag.StringVar(&extensionOnly, "extension-only", "", "--extension-only, select posts with only extension, separate by comma (e.g. --extension-only jpg,png)")
 	flag.StringVar(&extensionExclude, "extension-exclude", "", "--extension-exclude, select posts without extension, separate by comma (e.g. --extension-exclude jpg,png)")
 

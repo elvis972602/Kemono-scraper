@@ -1,11 +1,33 @@
-package kemono_scraper
+package kemono
 
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"time"
 )
+
+type Downloader interface {
+	Download(<-chan FileWithIndex, Creator, Post) <-chan error
+}
+
+type Log interface {
+	Printf(format string, v ...interface{})
+	Print(s string)
+}
+
+type DefaultLog struct {
+	log *log.Logger
+}
+
+func (d *DefaultLog) Printf(format string, v ...interface{}) {
+	d.log.Printf(format, v...)
+}
+
+func (d *DefaultLog) Print(s string) {
+	d.log.Print(s)
+}
 
 // Filter return true for continue, false for skip
 
@@ -28,11 +50,11 @@ type Kemono struct {
 	// Creator filter
 	creatorFilters []CreatorFilter
 
-	// Post filter
-	postFilters []PostFilter
+	// Post filter map[creator(<service>:<id>)][]PostFilter
+	postFilters map[string][]PostFilter
 
-	// Attachment filter
-	attachmentFilters []AttachmentFilter
+	// Attachment filter map[creator(<service>:<id>)][]AttachmentFilter
+	attachmentFilters map[string][]AttachmentFilter
 
 	// Select a specific creator
 	// If not specified, all creators will be selected
@@ -40,29 +62,26 @@ type Kemono struct {
 
 	// downloader
 	Downloader Downloader
+
+	log Log
 }
 
 func NewKemono(options ...Option) *Kemono {
 	k := &Kemono{
-		Site:   "kemono",
-		Banner: true,
+		Site:              "kemono",
+		Banner:            true,
+		postFilters:       make(map[string][]PostFilter),
+		attachmentFilters: make(map[string][]AttachmentFilter),
 	}
 	for _, option := range options {
 		option(k)
 	}
 	// lazy initialize downloader
 	if k.Downloader == nil {
-		k.Downloader = NewDownloader(
-			BaseURL(fmt.Sprintf("https://%s.party", k.Site)),
-			Async(true),
-			RateLimit(2),
-			WithHeader(Header{
-				"User-Agent":      UserAgent,
-				"Referer":         fmt.Sprintf("https://%s.party", k.Site),
-				"accept-encoding": "gzip, deflate, br",
-				"accept-language": "ja-JP;q=0.8,ja;q=0.7,en-US;q=0.6,en;q=0.5",
-			}),
-		)
+		panic("Downloader is nil")
+	}
+	if k.log == nil {
+		k.log = &DefaultLog{log: log.New(os.Stdout, "", log.LstdFlags)}
 	}
 	return k
 }
@@ -88,24 +107,39 @@ func WithCreators(creators []Creator) Option {
 }
 
 // WithUsers Select a specific creator, if not specified, all creators will be selected
-func WithUsers(idServicePairs ...string) Option {
+func WithUsers(user ...Creator) Option {
 	return func(k *Kemono) {
-		if len(idServicePairs)%2 != 0 {
-			panic("idServicePairs must be even")
-		}
-		for i := 0; i < len(idServicePairs); i += 2 {
+		for _, u := range user {
 			exist := false
 			for _, c := range k.users {
-				if c.Id == idServicePairs[i] && c.Service == idServicePairs[i+1] {
+				if c.Service == u.Service && c.Id == u.Id {
 					exist = true
 					break
 				}
 			}
 			if !exist {
-				k.users = append(k.users, Creator{
-					Id:      idServicePairs[i],
-					Service: idServicePairs[i+1],
-				})
+				k.users = append(k.users, u)
+			}
+		}
+	}
+}
+
+// WithUsersPair Select a specific creator, if not specified, all creators will be selected
+func WithUsersPair(serviceIdPairs ...string) Option {
+	return func(k *Kemono) {
+		if len(serviceIdPairs)%2 != 0 {
+			panic("serviceIdPairs must be even")
+		}
+		for i := 0; i < len(serviceIdPairs); i += 2 {
+			exist := false
+			for _, c := range k.users {
+				if c.Service == serviceIdPairs[i] && c.Id == serviceIdPairs[i+1] {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				k.users = append(k.users, NewCreator(serviceIdPairs[i], serviceIdPairs[i+1]))
 			}
 		}
 	}
@@ -115,6 +149,13 @@ func WithUsers(idServicePairs ...string) Option {
 func SetDownloader(downloader Downloader) Option {
 	return func(k *Kemono) {
 		k.Downloader = downloader
+	}
+}
+
+// SetLog set log
+func SetLog(log Log) Option {
+	return func(k *Kemono) {
+		k.log = log
 	}
 }
 
@@ -132,10 +173,22 @@ func WithPostFilter(filter ...PostFilter) Option {
 	}
 }
 
+func WithUserPostFilter(creator Creator, filter ...PostFilter) Option {
+	return func(k *Kemono) {
+		k.addUserPostFilter(creator.PairString(), filter...)
+	}
+}
+
 // WithAttachmentFilter Attachment filter
 func WithAttachmentFilter(filter ...AttachmentFilter) Option {
 	return func(k *Kemono) {
 		k.addAttachmentFilter(filter...)
+	}
+}
+
+func WithUserAttachmentFilter(creator Creator, filter ...AttachmentFilter) Option {
+	return func(k *Kemono) {
+		k.addUserAttachmentFilter(creator.PairString(), filter...)
 	}
 }
 
@@ -170,7 +223,7 @@ func (k *Kemono) Start() {
 	k.users = k.FilterCreators(k.users)
 
 	// start download
-	log.Printf("Start download %d creators", len(k.users))
+	k.log.Printf("Start download %d creators", len(k.users))
 	for _, creator := range k.users {
 		// fetch posts
 		posts, err := k.FetchPosts(creator.Service, creator.Id)
@@ -182,13 +235,13 @@ func (k *Kemono) Start() {
 
 		// filter attachments
 		for i, post := range posts {
-			if k.Banner {
+			if k.Banner && post.File.Path != "" {
 				res := make([]File, len(post.Attachments)+1)
 				copy(res[1:], post.Attachments)
 				res[0] = post.File
 				post.Attachments = res
 			}
-			posts[i].Attachments = k.FilterAttachments(post.Attachments)
+			posts[i].Attachments = k.FilterAttachments(fmt.Sprintf("%s:%s", post.Service, post.User), post.Attachments)
 		}
 
 		// download posts
@@ -204,16 +257,24 @@ func (k *Kemono) addCreatorFilter(filter ...CreatorFilter) {
 }
 
 func (k *Kemono) addPostFilter(filter ...PostFilter) {
-	k.postFilters = append(k.postFilters, filter...)
+	k.postFilters["*"] = append(k.postFilters["*"], filter...)
+}
+
+func (k *Kemono) addUserPostFilter(user string, filter ...PostFilter) {
+	k.postFilters[user] = append(k.postFilters[user], filter...)
 }
 
 func (k *Kemono) addAttachmentFilter(filter ...AttachmentFilter) {
-	k.attachmentFilters = append(k.attachmentFilters, filter...)
+	k.attachmentFilters["*"] = append(k.attachmentFilters["*"], filter...)
+}
+
+func (k *Kemono) addUserAttachmentFilter(user string, filter ...AttachmentFilter) {
+	k.attachmentFilters[user] = append(k.attachmentFilters[user], filter...)
 }
 
 func (k *Kemono) filterCreator(i int, creator Creator) bool {
 	for _, filter := range k.creatorFilters {
-		if !filter(1, creator) {
+		if !filter(i, creator) {
 			return false
 		}
 	}
@@ -221,7 +282,12 @@ func (k *Kemono) filterCreator(i int, creator Creator) bool {
 }
 
 func (k *Kemono) filterPost(i int, post Post) bool {
-	for _, filter := range k.postFilters {
+	for _, filter := range k.postFilters["*"] {
+		if !filter(i, post) {
+			return false
+		}
+	}
+	for _, filter := range k.postFilters[fmt.Sprintf("%s:%s", post.Service, post.User)] {
 		if !filter(i, post) {
 			return false
 		}
@@ -229,8 +295,13 @@ func (k *Kemono) filterPost(i int, post Post) bool {
 	return true
 }
 
-func (k *Kemono) filterAttachment(i int, attachment File) bool {
-	for _, filter := range k.attachmentFilters {
+func (k *Kemono) filterAttachment(user string, i int, attachment File) bool {
+	for _, filter := range k.attachmentFilters["*"] {
+		if !filter(i, attachment) {
+			return false
+		}
+	}
+	for _, filter := range k.attachmentFilters[user] {
 		if !filter(i, attachment) {
 			return false
 		}
@@ -258,10 +329,10 @@ func (k *Kemono) FilterPosts(posts []Post) []Post {
 	return filteredPosts
 }
 
-func (k *Kemono) FilterAttachments(attachments []File) []File {
+func (k *Kemono) FilterAttachments(user string, attachments []File) []File {
 	var filteredAttachments []File
 	for i, attachment := range attachments {
-		if k.filterAttachment(i, attachment) {
+		if k.filterAttachment(user, i, attachment) {
 			filteredAttachments = append(filteredAttachments, attachment)
 		}
 	}

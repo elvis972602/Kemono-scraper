@@ -1,14 +1,16 @@
-package kemono_scraper
+package downloader
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"log"
+	"github.com/elvis972602/kemono-scraper/kemono"
+	"github.com/elvis972602/kemono-scraper/term"
+	"github.com/elvis972602/kemono-scraper/utils"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -21,11 +23,13 @@ const (
 	Accept        = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
 )
 
-type Header map[string]string
-
-type Downloader interface {
-	Download(<-chan FileWithIndex, Creator, Post) <-chan error
+type Log interface {
+	Printf(format string, v ...interface{})
+	Print(s string)
+	SetStatus(s []string)
 }
+
+type Header map[string]string
 
 type DownloadOption func(*downloader)
 
@@ -43,11 +47,11 @@ type downloader struct {
 	OverWrite bool
 
 	// SavePath return the path to save the file
-	SavePath func(creator Creator, post Post, i int, attachment File) string
+	SavePath func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string
 	// timeout
 	Timeout time.Duration
 
-	reteLimiter *rateLimiter
+	reteLimiter *utils.RateLimiter
 
 	Header Header
 
@@ -56,9 +60,13 @@ type downloader struct {
 	retry int
 
 	retryInterval time.Duration
+
+	progressBar *utils.ProgressBar
+
+	log Log
 }
 
-func NewDownloader(options ...DownloadOption) Downloader {
+func NewDownloader(options ...DownloadOption) kemono.Downloader {
 	// with default options
 	d := &downloader{
 		MaxConcurrent: maxConcurrent,
@@ -66,8 +74,9 @@ func NewDownloader(options ...DownloadOption) Downloader {
 		SavePath:      defaultSavePath,
 		Timeout:       300 * time.Second,
 		Async:         false,
-		reteLimiter:   newRateLimiter(rateLimit),
+		reteLimiter:   utils.NewRateLimiter(rateLimit),
 		retry:         2,
+		progressBar:   utils.NewProgressBar(term.NewTerminal(os.Stdout, os.Stderr, false)),
 	}
 	for _, option := range options {
 		option(d)
@@ -79,6 +88,21 @@ func NewDownloader(options ...DownloadOption) Downloader {
 		d.MaxConcurrent = 1
 	}
 	d.cookies = make(chan []*http.Cookie, d.MaxConcurrent)
+	if d.log == nil {
+		panic("log is nil")
+	}
+
+	d.progressBar = utils.NewProgressBar(d.log)
+
+	go func() {
+		tick := time.NewTicker(100 * time.Millisecond)
+		for {
+			select {
+			case <-tick.C:
+				d.progressBar.SetStatus()
+			}
+		}
+	}()
 	return d
 }
 
@@ -106,7 +130,7 @@ func Timeout(timeout time.Duration) DownloadOption {
 // limit the rate of download per second
 func RateLimit(n int) DownloadOption {
 	return func(d *downloader) {
-		d.reteLimiter = newRateLimiter(n)
+		d.reteLimiter = utils.NewRateLimiter(n)
 	}
 }
 
@@ -116,14 +140,21 @@ func WithHeader(header Header) DownloadOption {
 	}
 }
 
-func SavePath(savePath func(creator Creator, post Post, i int, attachment File) string) DownloadOption {
+func SavePath(savePath func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string) DownloadOption {
 	return func(d *downloader) {
 		d.SavePath = savePath
 	}
 }
 
-func defaultSavePath(creator Creator, post Post, i int, attachment File) string {
-	return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), ValidDirectoryName(creator.Name), ValidDirectoryName(post.Title), ValidDirectoryName(attachment.Name))
+// SetLog set the log
+func SetLog(log Log) DownloadOption {
+	return func(d *downloader) {
+		d.log = log
+	}
+}
+
+func defaultSavePath(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
+	return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(attachment.Name))
 }
 
 // Async set the async download option
@@ -152,7 +183,7 @@ func RetryInterval(interval time.Duration) DownloadOption {
 	}
 }
 
-func (d *downloader) Download(files <-chan FileWithIndex, creator Creator, post Post) <-chan error {
+func (d *downloader) Download(files <-chan kemono.FileWithIndex, creator kemono.Creator, post kemono.Post) <-chan error {
 
 	//TODO: implement download
 	var (
@@ -214,7 +245,7 @@ func (d *downloader) download(filePath, url, fileHash string) error {
 			return err
 		}
 		if complete {
-			log.Printf("file %s already exists, skip", filePath)
+			d.log.Printf(utils.ShortenString("file ", filePath, " already exists, skip"))
 			return nil
 		}
 	} else {
@@ -239,7 +270,7 @@ func (d *downloader) download(filePath, url, fileHash string) error {
 func (d *downloader) downloadFile(file *os.File, url string) error {
 	d.reteLimiter.Token()
 
-	log.Printf("downloading file %s", url)
+	//progressBar.Printf("downloading file %s", url)
 	ctx, cancel := context.WithTimeout(context.Background(), d.Timeout)
 	defer cancel()
 
@@ -266,10 +297,13 @@ func (d *downloader) downloadFile(file *os.File, url string) error {
 		}
 		defer resp.Body.Close()
 
+		// get content length
+		contentLength, err := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
+
 		// 429 too many requests
 		if resp.StatusCode == http.StatusTooManyRequests {
 			if retry > 0 {
-				log.Printf("request too many times, retry after %.1f seconds...", d.retryInterval.Seconds())
+				d.log.Printf("request too many times, retry after %.1f seconds...", d.retryInterval.Seconds())
 				time.Sleep(d.retryInterval)
 				return get(retry - 1)
 			} else {
@@ -284,11 +318,14 @@ func (d *downloader) downloadFile(file *os.File, url string) error {
 		if len(resp.Cookies()) < d.MaxConcurrent {
 			d.cookies <- resp.Cookies()
 		}
-
-		_, err = io.Copy(file, resp.Body)
+		bar := &utils.Bar{Since: time.Now(), Prefix: "Download", Content: fmt.Sprintf("%s", filepath.Base(file.Name())), Max: contentLength, Length: 30}
+		d.progressBar.AddBar(bar)
+		_, err = utils.Copy(file, resp.Body, bar)
 		if err != nil {
+			d.progressBar.Fail(bar, err)
 			return fmt.Errorf("failed to write file: %w", err)
 		}
+		d.progressBar.Success(bar)
 		return nil
 	}
 
@@ -321,7 +358,7 @@ func checkFileExitAndComplete(filePath, fileHash string) (file *os.File, complet
 			err = fmt.Errorf("open file error: %w", err)
 			return
 		}
-		h, err = Hash(file)
+		h, err = utils.Hash(file)
 		if err != nil {
 			err = fmt.Errorf("get file hash error: %w", err)
 			return
@@ -333,7 +370,7 @@ func checkFileExitAndComplete(filePath, fileHash string) (file *os.File, complet
 		}
 		err = file.Truncate(0)
 		if err != nil {
-			log.Printf("truncate file error: %s", err)
+			err = fmt.Errorf("truncate file error: %w", err)
 			return nil, false, err
 		}
 		_, err := file.Seek(0, 0)
@@ -354,4 +391,8 @@ func newGetRequest(ctx context.Context, header Header, url string) (*http.Reques
 		req.Header.Set(k, v)
 	}
 	return req, nil
+}
+
+func DirectoryName(p kemono.Post) string {
+	return fmt.Sprintf("[%s][%s]%s", p.Published.Format("20060102"), p.Id, p.Title)
 }

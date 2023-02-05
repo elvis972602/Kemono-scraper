@@ -1,8 +1,9 @@
-package kemono_scraper
+package kemono
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/elvis972602/kemono-scraper/utils"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -10,7 +11,7 @@ import (
 
 // FetchCreators fetch Creator list
 func (k *Kemono) FetchCreators() (creators []Creator, err error) {
-	log.Printf("fetching creator list...")
+	k.log.Print("fetching creator list...")
 	url := fmt.Sprintf("https://%s.party/api/creators", k.Site)
 	resp, err := http.Get(url)
 	if err != nil {
@@ -22,7 +23,19 @@ func (k *Kemono) FetchCreators() (creators []Creator, err error) {
 		return nil, fmt.Errorf("fetch creator list error: %s", err)
 	}
 
-	err = json.Unmarshal(data, &creators)
+	if k.Site == "kemono" {
+		var c []KemonoCreator
+		err = json.Unmarshal(data, &c)
+		for _, v := range c {
+			creators = append(creators, v.ToCreator())
+		}
+	} else if k.Site == "coomer" {
+		var c []CoomerCreator
+		err = json.Unmarshal(data, &c)
+		for _, v := range c {
+			creators = append(creators, v.ToCreator())
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal creator list error: %s", err)
 	}
@@ -34,7 +47,7 @@ func (k *Kemono) FetchPosts(service, id string) (posts []Post, err error) {
 	url := fmt.Sprintf("https://%s.party/api/%s/user/%s", k.Site, service, id)
 
 	fetch := func(page int) (err error, finish bool) {
-		log.Printf("fetching post list page %d...", page)
+		k.log.Printf("fetching post list page %d...", page)
 		resp, err := http.Get(fmt.Sprintf("%s?o=%d", url, page*50))
 		if err != nil {
 			return fmt.Errorf("fetch post list error: %s", err), false
@@ -74,7 +87,11 @@ func (k *Kemono) FetchPosts(service, id string) (posts []Post, err error) {
 // DownloadPosts download posts
 func (k *Kemono) DownloadPosts(creator Creator, posts []Post) (err error) {
 	for _, post := range posts {
-		log.Println("download post: ", post.Title)
+		k.log.Printf("download post: %s", utils.ValidDirectoryName(post.Title))
+		if len(post.Attachments) == 0 {
+			// no attachment
+			continue
+		}
 		var (
 			attachmentsChan = make(chan FileWithIndex, len(post.Attachments))
 		)

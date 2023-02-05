@@ -1,8 +1,9 @@
-package kemono_scraper
+package utils
 
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"io"
 	"path/filepath"
 	"runtime"
@@ -37,31 +38,39 @@ func Hash(w io.Reader) ([]byte, error) {
 
 func ValidDirectoryName(name string) string {
 	if runtime.GOOS == "windows" {
-		invalidRune := "/\\:*?\"<>|"
+		invalidRune := "\x00-\x1f/\\:*?\"<>|\n\r\t"
 		validate := func(r rune) rune {
 			if strings.ContainsRune(invalidRune, r) {
 				return '_'
 			}
 			return r
 		}
-		if strings.ContainsAny(name, `/\:*?"<>|`) {
-			return strings.TrimSpace(strings.Map(validate, name))
-		} else {
-			return name
+		s := strings.TrimSpace(strings.Map(validate, name))
+		if len(s) > 255 {
+			s = s[:255]
 		}
+		if s[len(s)-1] == '.' {
+			s = s[:len(s)-1]
+			return fmt.Sprintf("%s_", s)
+		}
+		return s
 	}
-	invalidRune := "/\\"
+	invalidRune := "/\\\n\r\t"
 	validate := func(r rune) rune {
 		if strings.ContainsRune(invalidRune, r) {
 			return '_'
 		}
 		return r
 	}
-	if strings.ContainsAny(name, `/\`) {
-		return strings.TrimSpace(strings.Map(validate, name))
-	} else {
-		return name
+	s := strings.TrimSpace(strings.Map(validate, name))
+	if len(s) > 255 {
+		s = s[:255]
 	}
+	if s[0] == '.' {
+		s = s[1:]
+		return fmt.Sprintf("_%s", s)
+	}
+	return s
 }
 
 type semaphore chan struct{}
@@ -78,13 +87,13 @@ func (s semaphore) release() {
 	<-s
 }
 
-type rateLimiter struct {
+type RateLimiter struct {
 	limit     int
 	semaphore semaphore
 }
 
-func newRateLimiter(tokenPreSecond int) *rateLimiter {
-	r := &rateLimiter{
+func NewRateLimiter(tokenPreSecond int) *RateLimiter {
+	r := &RateLimiter{
 		limit:     tokenPreSecond,
 		semaphore: newSemaphore(tokenPreSecond),
 	}
@@ -93,7 +102,7 @@ func newRateLimiter(tokenPreSecond int) *rateLimiter {
 }
 
 // Timing add token into semaphore
-func (r *rateLimiter) Timing() {
+func (r *RateLimiter) Timing() {
 	t := time.NewTicker(time.Second)
 	// full semaphore
 	for i := 0; i < r.limit; i++ {
@@ -111,6 +120,6 @@ func (r *rateLimiter) Timing() {
 	}()
 }
 
-func (r *rateLimiter) Token() {
+func (r *RateLimiter) Token() {
 	r.semaphore.release()
 }

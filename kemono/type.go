@@ -1,19 +1,60 @@
-package kemono_scraper
+package kemono
 
 import (
 	"fmt"
+	"github.com/elvis972602/kemono-scraper/utils"
 	"net/url"
 	"path/filepath"
 	"time"
 )
 
 type Creator struct {
+	Favorited int       `json:"favorited"`
+	Id        string    `json:"id"`
+	Indexed   time.Time `json:"indexed"`
+	Name      string    `json:"name"`
+	Service   string    `json:"service"`
+	Updated   time.Time `json:"updated"`
+}
+
+type KemonoCreator struct {
 	Favorited int     `json:"favorited"`
 	Id        string  `json:"id"`
 	Indexed   float64 `json:"indexed"`
 	Name      string  `json:"name"`
 	Service   string  `json:"service"`
 	Updated   float64 `json:"updated"`
+}
+
+func (k KemonoCreator) ToCreator() Creator {
+	return Creator{
+		Favorited: k.Favorited,
+		Id:        k.Id,
+		Indexed:   time.Unix(int64(k.Indexed), 0),
+		Name:      k.Name,
+		Service:   k.Service,
+		Updated:   time.Unix(int64(k.Updated), 0),
+	}
+}
+
+type CoomerCreator struct {
+	Favorited int    `json:"favorited"`
+	Id        string `json:"id"`
+	Indexed   string `json:"indexed"`
+	Name      string `json:"name"`
+	Service   string `json:"service"`
+	Updated   string `json:"updated"`
+}
+
+func (k CoomerCreator) ToCreator() Creator {
+	c := Creator{}
+	c.Favorited = k.Favorited
+	c.Id = k.Id
+	c.Indexed, _ = time.Parse(time.RFC1123, k.Indexed)
+	c.Name = k.Name
+	c.Service = k.Service
+	c.Updated, _ = time.Parse(time.RFC1123, k.Updated)
+	return c
 }
 
 // GetID get creator id
@@ -24,6 +65,17 @@ func (c Creator) GetID() string {
 // GetService get creator Service
 func (c Creator) GetService() string {
 	return c.Service
+}
+
+func (c Creator) PairString() string {
+	return fmt.Sprintf("%s:%s", c.Service, c.Id)
+}
+
+func NewCreator(service, id string) Creator {
+	return Creator{
+		Service: service,
+		Id:      id,
+	}
 }
 
 // FindCreator Get the Creator by ID and Service
@@ -50,7 +102,7 @@ func (f File) GetURL() string {
 
 // GetHash get hash from file path
 func (f File) GetHash() (string, error) {
-	return SplitHash(f.Path)
+	return utils.SplitHash(f.Path)
 }
 
 func (f File) Index(n int) FileWithIndex {
@@ -126,4 +178,17 @@ func (u User) GetID() string {
 // GetService get user Service
 func (u User) GetService() string {
 	return u.Service
+}
+
+var SiteMap = map[string]string{
+	"patreon":       "kemono",
+	"fanbox":        "kemono",
+	"gumroad":       "kemono",
+	"subscribestar": "kemono",
+	"dlsite":        "kemono",
+	"discord":       "kemono",
+	"fantia":        "kemono",
+	"boosty":        "kemono",
+	"afdian":        "kemono",
+	"onlyfans":      "coomer",
 }
