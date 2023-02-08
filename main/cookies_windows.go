@@ -1,4 +1,4 @@
-//go:build windows
+//go:build windows && !no_cookies_detected
 
 package main
 

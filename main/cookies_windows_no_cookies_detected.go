@@ -1,4 +1,4 @@
-//go:build linux
+//go:build windows && no_cookies_detected
 
 package main
 
@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"runtime"
 )
 
 func getCookies(s string) []*http.Cookie {
@@ -17,6 +16,5 @@ func getCookies(s string) []*http.Cookie {
 			return parasCookeiFile(cookieFile)
 		}
 	}
-	log.Fatalf("Cookies detected, but not supported on %s", runtime.GOOS)
-	return nil
+	return []*http.Cookie{}
 }
