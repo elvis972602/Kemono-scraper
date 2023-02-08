@@ -45,6 +45,10 @@ type downloader struct {
 
 	OverWrite bool
 
+	maxSize int64
+
+	minSize int64
+
 	// SavePath return the path to save the file
 	SavePath func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string
 	// timeout
@@ -73,6 +77,9 @@ func NewDownloader(options ...DownloadOption) kemono.Downloader {
 		SavePath:      defaultSavePath,
 		Timeout:       300 * time.Second,
 		Async:         false,
+		OverWrite:     false,
+		maxSize:       1<<63 - 1,
+		minSize:       0,
 		reteLimiter:   utils.NewRateLimiter(rateLimit),
 		retry:         2,
 	}
@@ -115,6 +122,20 @@ func BaseURL(baseURL string) DownloadOption {
 func MaxConcurrent(maxConcurrent int) DownloadOption {
 	return func(d *downloader) {
 		d.MaxConcurrent = maxConcurrent
+	}
+}
+
+// MaxSize set the max size of the file to download
+func MaxSize(maxSize int64) DownloadOption {
+	return func(d *downloader) {
+		d.maxSize = maxSize
+	}
+}
+
+// MinSize set the min size of the file to download
+func MinSize(minSize int64) DownloadOption {
+	return func(d *downloader) {
+		d.minSize = minSize
 	}
 }
 
@@ -204,11 +225,7 @@ func (d *downloader) Download(files <-chan kemono.FileWithIndex, creator kemono.
 							hash = ""
 						}
 						savePath := d.SavePath(creator, post, file.Index, file.File)
-						err = os.MkdirAll(filepath.Dir(savePath), os.ModePerm)
-						if err != nil {
-							errCh <- errors.New("create directory error: " + err.Error())
-							continue
-						}
+
 						if err := d.download(savePath, url, hash); err != nil {
 							errCh <- errors.New("download file error: " + err.Error())
 							continue
@@ -231,13 +248,11 @@ func (d *downloader) Download(files <-chan kemono.FileWithIndex, creator kemono.
 func (d *downloader) download(filePath, url, fileHash string) error {
 	// check if the file exists
 	var (
-		f        *os.File
 		complete bool
 		err      error
 	)
 	if !d.OverWrite {
-		f, complete, err = checkFileExitAndComplete(filePath, fileHash)
-		defer f.Close()
+		complete, err = checkFileExitAndComplete(filePath, fileHash)
 		if err != nil {
 			err = errors.New("check file error: " + err.Error())
 			return err
@@ -246,17 +261,15 @@ func (d *downloader) download(filePath, url, fileHash string) error {
 			d.log.Printf(utils.ShortenString("file ", filePath, " already exists, skip"))
 			return nil
 		}
-	} else {
-		f, err = os.Create(filePath)
-		defer f.Close()
-		if err != nil {
-			err = errors.New("create file error: " + err.Error())
-			return err
-		}
+	}
+
+	err = os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
+	if err != nil {
+		err = errors.New("create directory error: " + err.Error())
+		return err
 	}
 	// download the file
-
-	if err := d.downloadFile(f, url); err != nil {
+	if err := d.downloadFile(filePath, url); err != nil {
 		err = errors.New("download file error: " + err.Error())
 		return err
 	}
@@ -265,7 +278,7 @@ func (d *downloader) download(filePath, url, fileHash string) error {
 }
 
 // download the file from the url, and save to the file
-func (d *downloader) downloadFile(file *os.File, url string) error {
+func (d *downloader) downloadFile(filePath, url string) error {
 	d.reteLimiter.Token()
 
 	//progressBar.Printf("downloading file %s", url)
@@ -297,6 +310,19 @@ func (d *downloader) downloadFile(file *os.File, url string) error {
 
 		// get content length
 		contentLength, err := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to get content length: %w", err)
+		}
+
+		if contentLength > d.maxSize || contentLength < 0 {
+			return nil
+		}
+
+		file, err := os.Create(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to create file: %w", err)
+		}
+		defer file.Close()
 
 		// 429 too many requests
 		if resp.StatusCode == http.StatusTooManyRequests {
@@ -333,22 +359,16 @@ func (d *downloader) downloadFile(file *os.File, url string) error {
 
 // check if the file exists, if exists, check if the file is complete,and return the file
 // if the file is complete, return true
-func checkFileExitAndComplete(filePath, fileHash string) (file *os.File, complete bool, err error) {
+func checkFileExitAndComplete(filePath, fileHash string) (complete bool, err error) {
 	// check if the file exists
-	var h []byte
+	var (
+		h    []byte
+		file *os.File
+	)
 	f, err := os.Stat(filePath)
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			err = fmt.Errorf("check file error: %w", err)
-			return
-		} else {
-			// create the file
-			file, err = os.Create(filePath)
-			if err != nil {
-				err = fmt.Errorf("create file error: %w", err)
-				return
-			}
-		}
+		// un exists
+		return false, nil
 	} else if f != nil {
 		// file exists, check if the file is complete
 		file, err = os.OpenFile(filePath, os.O_RDWR, 0644)
@@ -366,17 +386,21 @@ func checkFileExitAndComplete(filePath, fileHash string) (file *os.File, complet
 			complete = true
 			return
 		}
-		err = file.Truncate(0)
-		if err != nil {
-			err = fmt.Errorf("truncate file error: %w", err)
-			return nil, false, err
-		}
-		_, err := file.Seek(0, 0)
-		if err != nil {
-			return nil, false, err
-		}
 	}
-	return file, false, nil
+	return false, nil
+}
+
+func checkContentLength(url string) (int64, error) {
+	req, err := http.NewRequest("HEAD", url, nil)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	return strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
 }
 
 func newGetRequest(ctx context.Context, header Header, url string) (*http.Request, error) {
@@ -392,5 +416,5 @@ func newGetRequest(ctx context.Context, header Header, url string) (*http.Reques
 }
 
 func DirectoryName(p kemono.Post) string {
-	return fmt.Sprintf("[%s][%s]%s", p.Published.Format("20060102"), p.Id, p.Title)
+	return fmt.Sprintf("[%s] [%s] %s", p.Published.Format("20060102"), p.Id, p.Title)
 }
