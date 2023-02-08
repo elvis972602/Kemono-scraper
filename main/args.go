@@ -50,6 +50,10 @@ var (
 	output string
 	// async
 	async bool
+	// max size
+	maxSize string
+	// min size
+	minSize string
 	// with prefix number
 	withPrefixNumber bool
 	// name rule only index
@@ -64,6 +68,15 @@ var (
 	maxDownloadParallel int
 	// request per second
 	rateLimit int
+
+	// download favorite creator
+	favoriteCreator bool
+	// download favorite post
+	favoritePost bool
+	// cookie browser
+	cookieBrowser string
+	// cookie file
+	cookieFile string
 )
 
 var config map[string]interface{}
@@ -71,9 +84,17 @@ var config map[string]interface{}
 func init() {
 	flag.BoolVar(&help, "help", false, "show all usage")
 	flag.StringVar(&link, "link", "", "download link, should be same site, separate by comma")
+	// if already have link, or creator, site will be ignored
+	flag.StringVar(&site, "fav-site", "", "download favorite creator or post, separate by comma")
 	flag.StringVar(&creator, "creator", "", "--creator <service>:<id>, separate by comma")
 	flag.BoolVar(&banner, "banner", false, "if download banner")
-
+	flag.BoolVar(&favoriteCreator, "fav-creator", false, "download favorite creator")
+	flag.BoolVar(&favoritePost, "fav-post", false, "download favorite post")
+	flag.StringVar(&cookieBrowser, "cookie-browser", "chrome", "cookie browser, windows only, support chrome, firefox, opera, edge, vivaldi,default is chrome, other system can use --cookie <file name>")
+	flag.StringVar(&cookieFile, "cookie", "cookies.txt", "cookie file, default is cookie.txt (value separate by whitespace)\n"+
+		"structure : +--------+--------------------+------+--------+--------+------+-------+\n"+
+		"            | Domain | Include subdomains | Path | Secure | Expiry | Name | Value |\n"+
+		"            +--------+--------------------+------+--------+--------+------+-------+")
 	// filter
 	flag.BoolVar(&overwrite, "overwrite", false, "if overwrite file")
 	flag.IntVar(&first, "first", 0, "download first n posts")
@@ -90,6 +111,8 @@ func init() {
 	// download options
 	flag.StringVar(&output, "output", "", "output directory")
 	flag.BoolVar(&async, "async", false, "if download posts asynchronously, may cause the file order is not the same as the post order, can be used with --with-prefix-number, default false")
+	flag.StringVar(&maxSize, "max-size", "", "max size, e.g. 10 MB, 1 GB")
+	flag.StringVar(&minSize, "min-size", "", "min size, e.g. 10 MB, 1 GB")
 	flag.BoolVar(&withPrefixNumber, "with-prefix-number", false, "if add prefix number to file name: <index>-<file name> (zip file name is not changed)")
 	flag.BoolVar(&nameRuleOnlyIndex, "name-rule-only-index", false, "if use only index as file name(eg. 1.png, 2.png, ...)")
 	flag.IntVar(&downloadTimeout, "download-timeout", 300, "download timeout(second), default is 300s")

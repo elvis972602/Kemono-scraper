@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/elvis972602/kemono-scraper/downloader"
@@ -9,6 +11,7 @@ import (
 	"github.com/elvis972602/kemono-scraper/term"
 	"github.com/elvis972602/kemono-scraper/utils"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -16,6 +19,30 @@ import (
 	"strings"
 	"time"
 )
+
+const (
+	Kemono = "kemono"
+	Coomer = "coomer"
+)
+
+var (
+	creators               []string
+	links                  []string
+	options                map[string][]kemono.Option
+	sharedOptions          []kemono.Option
+	downloaderOptions      []downloader.DownloadOption
+	hasLink                bool
+	s, srv, userId, postId string
+	// map[<Creator>][]<postId>
+	idFilter map[string]map[kemono.Creator][]string
+)
+
+func init() {
+	idFilter = make(map[string]map[kemono.Creator][]string)
+	idFilter[Kemono] = make(map[kemono.Creator][]string)
+	idFilter[Coomer] = make(map[kemono.Creator][]string)
+	options = make(map[string][]kemono.Option)
+}
 
 func main() {
 	flag.Parse()
@@ -26,15 +53,6 @@ func main() {
 	}
 
 	setFlag()
-
-	var (
-		creators               []string
-		links                  []string
-		options                []kemono.Option
-		downloaderOptions      []downloader.DownloadOption
-		hasLink                bool
-		s, srv, userId, postId string
-	)
 
 	if creator != "" {
 		creatorComponents := strings.Split(creator, ",")
@@ -61,74 +79,87 @@ func main() {
 
 	if len(links) > 0 {
 		hasLink = true
-		users := make([]string, 0)
-		ids := make(map[string][]string, 0)
-		for i, l := range links {
+		users := make(map[string][]string)
+		for _, l := range links {
 			s, srv, userId, postId = parasLink(l)
-			if i == 0 {
-				site = s
-			} else {
-				if s != site {
-					log.Fatalf("site %s is not match %s", s, site)
-				}
-			}
-			cs := kemono.NewCreator(srv, userId).PairString()
-			users = append(users, srv, userId)
+
+			cs := kemono.NewCreator(srv, userId)
+			users[s] = append(users[s], srv, userId)
 			if postId != "" {
-				ids[cs] = append(ids[cs], postId)
+				idFilter[s][cs] = append(idFilter[s][cs], postId)
 			}
+			options[s] = append(options[s],
+				kemono.WithUsersPair(users[s]...),
+			)
 		}
-		options = append(options,
-			kemono.WithDomain(s),
-			kemono.WithUsersPair(users...),
-		)
-		for i := 0; i < len(users); i += 2 {
-			cs := kemono.NewCreator(users[i], users[i+1]).PairString()
-			if len(ids[cs]) == 0 {
-				continue
-			}
-			options = append(options,
-				kemono.WithUserPostFilter(kemono.NewCreator(users[i], users[i+1]),
-					kemono.IdFilter(ids[cs]...)))
-		}
-		downloaderOptions = append(downloaderOptions, downloader.BaseURL(fmt.Sprintf("https://%s.party", s)))
 	}
 
 	// check creator
 	if len(creators) > 0 {
-		users := make([]string, 0)
-		for i, c := range creators {
+		for _, c := range creators {
 			creatorComponents := strings.Split(c, ":")
 			if len(creatorComponents) != 2 {
 				log.Fatalf("invalid creator %s", c)
 			}
-			if i == 0 && site == "" {
-				site = kemono.SiteMap[creatorComponents[0]]
-			} else {
-				if site != kemono.SiteMap[creatorComponents[0]] {
-					log.Fatalf("site %s not match creator %s", site, creatorComponents[0])
-				}
+			s, ok := kemono.SiteMap[creatorComponents[0]]
+			if !ok {
+				log.Fatalf("invalid creator %s", c)
 			}
-			users = append(users, creatorComponents[0], creatorComponents[1])
+			options[s] = append(options[s], kemono.WithUsersPair(creatorComponents[0], creatorComponents[1]))
+
 		}
-		options = append(options, kemono.WithUsersPair(users...))
-		if !hasLink {
-			options = append(options, kemono.WithDomain(site))
-			downloaderOptions = append(downloaderOptions, downloader.BaseURL(fmt.Sprintf("https://%s.party", site)))
-		}
-	} else if !hasLink {
+	} else if !hasLink && !favoriteCreator && !favoritePost {
 		log.Fatal("creator is empty")
 	}
 
+	if favoriteCreator || favoritePost {
+		if site == "" {
+			log.Fatal("fav-site is empty")
+		}
+		siteComponents := strings.Split(site, ",")
+		for _, siteComponent := range siteComponents {
+			siteComponent = strings.TrimSpace(siteComponent)
+			if siteComponent == "" {
+				continue
+			}
+			cs := getCookies(siteComponent)
+			if len(cs) == 0 {
+				log.Fatal("cookie is empty")
+			}
+			if favoriteCreator {
+				for _, c := range fetchFavoriteCreators(siteComponent, cs) {
+					options[siteComponent] = append(options[siteComponent], kemono.WithUsersPair(c.Service, c.Id))
+				}
+			}
+			if favoritePost {
+				for _, c := range fetchFavoritePosts(siteComponent, cs) {
+					u := kemono.NewCreator(c.Service, c.User)
+					options[siteComponent] = append(options[siteComponent], kemono.WithUsers(u))
+					idFilter[siteComponent][u] = append(idFilter[siteComponent][u], c.Id)
+				}
+			}
+		}
+	}
+
+	for k, v := range idFilter {
+		for u, ids := range v {
+			if len(ids) > 0 {
+				options[k] = append(options[k], kemono.WithUserPostFilter(u,
+					kemono.IdFilter(ids...),
+				))
+			}
+		}
+	}
+
 	// banner
-	options = append(options, kemono.WithBanner(banner))
+	sharedOptions = append(sharedOptions, kemono.WithBanner(banner))
 
 	// overwrite
 	downloaderOptions = append(downloaderOptions, downloader.OverWrite(overwrite))
 
 	// check first
 	if first != 0 {
-		options = append(options, kemono.WithPostFilter(
+		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.NumbFilter(func(i int) bool {
 				if i <= first {
 					return true
@@ -140,7 +171,7 @@ func main() {
 
 	// check last
 	if last != 0 {
-		options = append(options, kemono.WithPostFilter(
+		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.NumbFilter(func(i int) bool {
 				if i >= last {
 					return true
@@ -152,42 +183,42 @@ func main() {
 
 	if date != 0 {
 		t := parasData(strconv.Itoa(date))
-		options = append(options, kemono.WithPostFilter(
+		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.ReleaseDateFilter(t.Add(-1), t.Add(24*time.Hour-1)),
 		))
 	}
 
 	if dateBefore != 0 {
 		t := parasData(strconv.Itoa(dateBefore))
-		options = append(options, kemono.WithPostFilter(
+		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.ReleaseDateBeforeFilter(t),
 		))
 	}
 
 	if dateAfter != 0 {
 		t := parasData(strconv.Itoa(dateAfter))
-		options = append(options, kemono.WithPostFilter(
+		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.ReleaseDateAfterFilter(t),
 		))
 	}
 
 	if update != 0 {
 		t := parasData(strconv.Itoa(update))
-		options = append(options, kemono.WithPostFilter(
+		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.EditDateFilter(t.Add(-1), t.Add(24*time.Hour-1)),
 		))
 	}
 
 	if updateBefore != 0 {
 		t := parasData(strconv.Itoa(updateBefore))
-		options = append(options, kemono.WithPostFilter(
+		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.EditDateBeforeFilter(t),
 		))
 	}
 
 	if updateAfter != 0 {
 		t := parasData(strconv.Itoa(updateAfter))
-		options = append(options, kemono.WithPostFilter(
+		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.EditDateAfterFilter(t),
 		))
 	}
@@ -202,7 +233,7 @@ func main() {
 				extensionComponents[i] = "." + extension
 			}
 		}
-		options = append(options, kemono.WithAttachmentFilter(
+		sharedOptions = append(sharedOptions, kemono.WithAttachmentFilter(
 			kemono.ExtensionFilter(extensionComponents...),
 		))
 	}
@@ -217,7 +248,7 @@ func main() {
 				extensionComponents[i] = "." + extension
 			}
 		}
-		options = append(options, kemono.WithAttachmentFilter(
+		sharedOptions = append(sharedOptions, kemono.WithAttachmentFilter(
 			kemono.ExtensionExcludeFilter(extensionComponents...),
 		))
 	}
@@ -278,6 +309,16 @@ func main() {
 		}
 	}
 
+	if maxSize != "" {
+		size := utils.ParseSize(maxSize)
+		downloaderOptions = append(downloaderOptions, downloader.MaxSize(size))
+	}
+
+	if minSize != "" {
+		size := utils.ParseSize(minSize)
+		downloaderOptions = append(downloaderOptions, downloader.MinSize(size))
+	}
+
 	if downloadTimeout <= 0 {
 		log.Fatalf("invalid download timeout %d", downloadTimeout)
 	} else {
@@ -315,15 +356,44 @@ func main() {
 	go terminal.Run(ctx)
 
 	downloaderOptions = append(downloaderOptions, downloader.SetLog(terminal))
-	options = append(options, kemono.SetLog(terminal))
+	sharedOptions = append(sharedOptions, kemono.SetLog(terminal))
 
-	download := downloader.NewDownloader(downloaderOptions...)
+	var (
+		KKemono          *kemono.Kemono
+		KCoomer          *kemono.Kemono
+		KemonoDownloader kemono.Downloader
+		CoomerDownloader kemono.Downloader
+		k, c             bool
+	)
 
-	options = append(options, kemono.SetDownloader(download))
+	// Kemono
+	if len(options[Kemono]) > 0 {
+		k = true
+		options[Kemono] = append(options[Kemono], sharedOptions...)
+		options[Kemono] = append(options[Kemono], kemono.WithDomain("kemono"))
+		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://kemono.party"))
+		KemonoDownloader = downloader.NewDownloader(downloaderOptions...)
+		options[Kemono] = append(options[Kemono], kemono.SetDownloader(KemonoDownloader))
+		KKemono = kemono.NewKemono(options[Kemono]...)
+	}
+	if len(options[Coomer]) > 0 {
+		c = true
+		options[Coomer] = append(options[Coomer], sharedOptions...)
+		options[Coomer] = append(options[Coomer], kemono.WithDomain("coomer"))
+		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://coomer.party"))
+		CoomerDownloader = downloader.NewDownloader(downloaderOptions...)
+		options[Coomer] = append(options[Coomer], kemono.SetDownloader(CoomerDownloader))
+		KCoomer = kemono.NewKemono(options[Coomer]...)
+	}
 
-	K := kemono.NewKemono(options...)
-
-	K.Start()
+	if k {
+		terminal.Print("Downloading Kemono")
+		KKemono.Start()
+	}
+	if c {
+		terminal.Print("Downloading Coomer")
+		KCoomer.Start()
+	}
 
 	defer func() {
 		ctx.Done()
@@ -331,7 +401,7 @@ func main() {
 
 }
 
-func parasLink(link string) (site, service, userId, postId string) {
+func parasLink(link string) (s, service, userId, postId string) {
 	var ext string
 
 	u, err := url.Parse(link)
@@ -345,7 +415,7 @@ func parasLink(link string) (site, service, userId, postId string) {
 		return
 	}
 
-	site = hostComponents[0]
+	s = hostComponents[0]
 	ext = hostComponents[1]
 	if ext != "party" {
 		log.Fatal("invalid url")
@@ -391,8 +461,8 @@ func setFlag() {
 	if !isFlagPassed("link") && config["link"] != nil {
 		link = config["link"].(string)
 	}
-	if !isFlagPassed("site") && config["site"] != nil {
-		site = config["site"].(string)
+	if !isFlagPassed("fav-site") && config["fav-site"] != nil {
+		site = config["fav-site"].(string)
 	}
 	if !isFlagPassed("creator") && config["creator"] != nil {
 		creator = config["creator"].(string)
@@ -439,6 +509,12 @@ func setFlag() {
 	if !isFlagPassed("async") && config["async"] != nil {
 		async = config["async"].(bool)
 	}
+	if !isFlagPassed("max-size") && config["max-size"] != nil {
+		maxSize = config["max-size"].(string)
+	}
+	if !isFlagPassed("min-size") && config["min-size"] != nil {
+		minSize = config["min-size"].(string)
+	}
 	if !isFlagPassed("with-prefix-number") && config["with-prefix-number"] != nil {
 		withPrefixNumber = config["with-prefix-number"].(bool)
 	}
@@ -461,8 +537,120 @@ func setFlag() {
 	if !isFlagPassed("rate-limit") && config["rate-limit"] != nil {
 		rateLimit = config["rate-limit"].(int)
 	}
+	if !isFlagPassed("fav-creator") && config["fav-creator"] != nil {
+		favoriteCreator = config["fav-creator"].(bool)
+	}
+	if !isFlagPassed("fav-post") && config["fav-post"] != nil {
+		favoritePost = config["fav-post"].(bool)
+	}
+	if !isFlagPassed("cookie-browser") && config["cookie-browser"] != nil {
+		cookieBrowser = config["cookie-browser"].(string)
+	}
+	if !isFlagPassed("cookie") && config["cookie"] != nil {
+		cookieFile = config["cookie"].(string)
+	}
+
 }
 
 func DirectoryName(p kemono.Post) string {
-	return fmt.Sprintf("[%s][%s]%s", p.Published.Format("20060102"), p.Id, p.Title)
+	return fmt.Sprintf("[%s] [%s] %s", p.Published.Format("20060102"), p.Id, p.Title)
+}
+
+func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCreator {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.party/api/favorites?type=user", s), nil)
+	if err != nil {
+		log.Fatalf("Error creating request: %s", err)
+	}
+	for _, v := range cookie {
+		req.AddCookie(v)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatalf("Error getting favorites: %s", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		log.Fatalf("Error getting favorites: %d", resp.StatusCode)
+	}
+	var creators []kemono.FavoriteCreator
+	err = json.NewDecoder(resp.Body).Decode(&creators)
+	if err != nil {
+		log.Fatalf("Error decoding favorites: %s", err)
+	}
+	return creators
+}
+
+func fetchFavoritePosts(s string, cookie []*http.Cookie) []kemono.PostRaw {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.party/api/favorites?type=post", s), nil)
+	if err != nil {
+		log.Fatalf("Error creating request: %s", err)
+	}
+	for _, v := range cookie {
+		req.AddCookie(v)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatalf("Error getting posts: %s", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		log.Fatalf("Error getting posts: %d", resp.StatusCode)
+	}
+	var posts []kemono.PostRaw
+	err = json.NewDecoder(resp.Body).Decode(&posts)
+	if err != nil {
+		log.Fatalf("Error decoding posts: %s", err)
+	}
+	return posts
+}
+
+func parasCookeiFile(cookieFile string) []*http.Cookie {
+	var (
+		cookies []*http.Cookie
+		domain  string
+	)
+	f, err := os.Open(cookieFile)
+	if err != nil {
+		log.Fatalf("Error opening cookie file: %s", err)
+	}
+	defer f.Close()
+	if site != "" {
+		domain = site
+	}
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		columns := strings.Fields(line)
+		if len(columns) < 7 {
+			continue
+		}
+		domainComponents := strings.Split(columns[0], ".")
+		d := domainComponents[len(domainComponents)-2]
+		if domain == "" {
+			domain = d
+		} else if domain != d {
+			// other domain ignore
+			continue
+		}
+		exp, err := strconv.ParseInt(columns[4], 10, 64)
+		if err != nil {
+			continue
+		}
+		c := &http.Cookie{
+			Name:    columns[5],
+			Value:   columns[6],
+			Domain:  columns[0],
+			Path:    columns[2],
+			Secure:  columns[3] == "TRUE",
+			Expires: time.Unix(exp, 0),
+		}
+		cookies = append(cookies, c)
+	}
+	if site == "" {
+		site = domain
+	}
+	return cookies
 }
