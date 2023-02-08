@@ -8,15 +8,15 @@ only needed if you want to download favorite creators or posts
   
 `--cookie PATH`  
 cookie file, default is cookies.txt (value separate by whitespace)  
-format:  
+syntax:  
 
 | Domain        | Include subdomains | Path | Secure | Expiry     | Name        | Value   |
 |---------------|--------------------|------|--------|------------|-------------|---------|
 | .kemono.party | FALSE              | /    | TRUE   | 1706755572 | kemono_auth | <value> |
 
-you can get it easily by using Chrome extension [Get cookies.txt](https://chrome.google.com/webstore/detail/get-cookiestxt/bgaddhkoddajcdgocldbbfleckgcbcid)
+you can get cookies easily by using Chrome extension [Get cookies.txt](https://chrome.google.com/webstore/detail/get-cookiestxt/bgaddhkoddajcdgocldbbfleckgcbcid)
 #### Windows
-windows can detect the cookie file automatically  
+Windows can detect the cookie file automatically  
 `--cookie-browser string`  
 which browser to use, default is chrome (supported: chrome, firefox, edge , opera, vivaldi)
 
@@ -27,8 +27,8 @@ download link, separate by comma
 download creators, separate by comma  
 `--banner bool`  
 download banner, default is false (kemono only)  
-`fav-site string`  
-download fav-site (e.g. kemono, etc.), separate by comma.  
+`--fav-site string`  
+download favorite site (e.g. kemono, etc.), separate by comma.  
 `--fav-creator bool`  
 download favorite creator, default is false  
 `--fav-post bool`  
