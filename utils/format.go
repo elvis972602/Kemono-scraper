@@ -21,6 +21,8 @@ const (
 func FormatSize(size int64) string {
 
 	switch {
+	case size >= TB:
+		return fmt.Sprintf("%.2fTB", float64(size)/TB)
 	case size >= GB:
 		return fmt.Sprintf("%.2f GB", float64(size)/GB)
 	case size >= MB:
@@ -33,22 +35,38 @@ func FormatSize(size int64) string {
 }
 
 func ParseSize(size string) int64 {
+	size = strings.ToUpper(size)
+	var (
+		fvalue float64
+		unit   string
+		value  string
+	)
+	// 1MB or 1 MB
 	parts := strings.Fields(size)
-	value, err := strconv.ParseFloat(parts[0], 64)
-	if err != nil {
-		return 0
+	if len(parts) != 2 {
+		for _, u := range []string{"TB", "GB", "MB", "KB", "B"} {
+			if strings.HasSuffix(size, u) {
+				value = strings.TrimSuffix(size, u)
+				unit = u
+				break
+			}
+		}
+		fvalue, _ = strconv.ParseFloat(value, 64)
+	} else {
+		fvalue, _ = strconv.ParseFloat(parts[0], 64)
+		unit = parts[1]
 	}
-	switch parts[1] {
+	switch unit {
 	case "TB":
-		return int64(value * TB)
+		return int64(fvalue * TB)
 	case "GB":
-		return int64(value * GB)
+		return int64(fvalue * GB)
 	case "MB":
-		return int64(value * MB)
+		return int64(fvalue * MB)
 	case "KB":
-		return int64(value * KB)
+		return int64(fvalue * KB)
 	default:
-		return int64(value)
+		return int64(fvalue)
 	}
 }
 

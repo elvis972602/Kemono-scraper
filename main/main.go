@@ -383,6 +383,7 @@ func main() {
 		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://coomer.party"))
 		CoomerDownloader = downloader.NewDownloader(downloaderOptions...)
 		options[Coomer] = append(options[Coomer], kemono.SetDownloader(CoomerDownloader))
+		options[Coomer] = append(options[Coomer], kemono.WithBanner(true))
 		KCoomer = kemono.NewKemono(options[Coomer]...)
 	}
 
