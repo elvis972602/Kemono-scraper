@@ -180,6 +180,15 @@ func (u User) GetService() string {
 	return u.Service
 }
 
+type FavoriteCreator struct {
+	FavedSeq int    `json:"faved_seq"`
+	Id       string `json:"id"`
+	Index    string `json:"index"`
+	Name     string `json:"name"`
+	Service  string `json:"service"`
+	Update   string `json:"update"`
+}
+
 var SiteMap = map[string]string{
 	"patreon":       "kemono",
 	"fanbox":        "kemono",
