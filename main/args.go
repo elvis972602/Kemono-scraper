@@ -91,7 +91,7 @@ func init() {
 	flag.BoolVar(&favoriteCreator, "fav-creator", false, "download favorite creator")
 	flag.BoolVar(&favoritePost, "fav-post", false, "download favorite post")
 	flag.StringVar(&cookieBrowser, "cookie-browser", "chrome", "cookie browser, windows only, support chrome, firefox, opera, edge, vivaldi,default is chrome, other system can use --cookie <file name>")
-	flag.StringVar(&cookieFile, "cookie", "cookies.txt", "cookie file, default is cookie.txt (value separate by whitespace)\n"+
+	flag.StringVar(&cookieFile, "cookie", "cookies.txt", "cookie file, default is cookies.txt (value separate by whitespace)\n"+
 		"structure : +--------+--------------------+------+--------+--------+------+-------+\n"+
 		"            | Domain | Include subdomains | Path | Secure | Expiry | Name | Value |\n"+
 		"            +--------+--------------------+------+--------+--------+------+-------+")
