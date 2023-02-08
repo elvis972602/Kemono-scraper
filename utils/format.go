@@ -4,14 +4,21 @@ import (
 	"fmt"
 	"golang.org/x/term"
 	"golang.org/x/text/width"
+	"strconv"
+	"strings"
 	"syscall"
 	"unicode"
 )
 
+const (
+	B = 1 << (10 * iota)
+	KB
+	MB
+	GB
+	TB
+)
+
 func FormatSize(size int64) string {
-	const KB = 1024
-	const MB = KB * 1024
-	const GB = MB * 1024
 
 	switch {
 	case size >= GB:
@@ -22,6 +29,26 @@ func FormatSize(size int64) string {
 		return fmt.Sprintf("%.2f KB", float64(size)/KB)
 	default:
 		return fmt.Sprintf("%d B", size)
+	}
+}
+
+func ParseSize(size string) int64 {
+	parts := strings.Fields(size)
+	value, err := strconv.ParseFloat(parts[0], 64)
+	if err != nil {
+		return 0
+	}
+	switch parts[1] {
+	case "TB":
+		return int64(value * TB)
+	case "GB":
+		return int64(value * GB)
+	case "MB":
+		return int64(value * MB)
+	case "KB":
+		return int64(value * KB)
+	default:
+		return int64(value)
 	}
 }
 
