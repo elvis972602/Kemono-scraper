@@ -68,11 +68,10 @@ func NewProgressBar(log Log) *ProgressBar {
 	return &ProgressBar{pre: 0, log: log}
 }
 
-func (p *ProgressBar) AddBar(bar *Bar) int {
+func (p *ProgressBar) AddBar(bar *Bar) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.progressBars = append(p.progressBars, bar)
-	return -1
 }
 
 func (p *ProgressBar) Remove(bar *Bar) {
@@ -92,12 +91,12 @@ func (p *ProgressBar) Remove(bar *Bar) {
 func (p *ProgressBar) Success(bar *Bar) {
 	p.Remove(bar)
 	p.SetStatus()
-	p.PrintAbsolute(bar.String())
+	p.Print(bar.String())
 }
 
 func (p *ProgressBar) Fail(bar *Bar, err error) {
 	p.Remove(bar)
-	p.PrintAbsolute(bar.FailString(err.Error()))
+	p.Print(bar.FailString(err.Error()))
 }
 
 func (p *ProgressBar) SetStatus() {
@@ -107,57 +106,12 @@ func (p *ProgressBar) SetStatus() {
 	for i := 0; i < len(p.progressBars); i++ {
 		s = append(s, p.progressBars[i].String())
 	}
+	if len(s) == 0 {
+		s = append(s, "")
+	}
 	p.log.SetStatus(s)
 }
 
-func (p *ProgressBar) PrintAbsolute(s string) {
+func (p *ProgressBar) Print(s string) {
 	p.log.Print(s)
 }
-
-//func (p *ProgressBar) SetStatus() {
-//	var b strings.Builder
-//	for i := 0; i < p.pre-1; i++ {
-//		b.WriteString(ClearLine)
-//		b.WriteString(PreLine)
-//	}
-//	b.WriteString(ClearLine)
-//	p.lock.Lock()
-//	p.pre = len(p.progressBars)
-//	for i := 0; i < len(p.progressBars); i++ {
-//		if i == 0 {
-//			b.WriteString(p.progressBars[i].String())
-//		} else {
-//			b.WriteString("\n" + p.progressBars[i].String())
-//		}
-//	}
-//	p.lock.Unlock()
-//	fmt.SetStatus(b.String())
-//}
-
-//func (p *ProgressBar) PrintAbsolute(any ...string) {
-//	var b strings.Builder
-//	for i := 0; i < p.pre-1; i++ {
-//		b.WriteString(PreLine)
-//		b.WriteString(ClearLine)
-//	}
-//	b.WriteString(ClearLine)
-//	// write any to b
-//	for i, s := range any {
-//		// if last item, last char not \n, add it
-//		if i == len(any)-1 && s[len(s)-1] != '\n' {
-//			s += "\n"
-//		}
-//		b.WriteString(s)
-//	}
-//	p.lock.Lock()
-//	p.pre = len(p.progressBars)
-//	for i := 0; i < len(p.progressBars); i++ {
-//		if i == 0 {
-//			b.WriteString(p.progressBars[i].String())
-//		} else {
-//			b.WriteString("\n" + p.progressBars[i].String())
-//		}
-//	}
-//	p.lock.Unlock()
-//	fmt.SetStatus(b.String())
-//}
