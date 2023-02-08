@@ -1,8 +1,5 @@
 # Kemono-scraper
-A simple scraper to  filter and download images from kemono.party
-
-## Downloader Released
-Source code is in `./main`
+A simple downloader to  download images from kemono.party
 
 ## Flag Option
 
