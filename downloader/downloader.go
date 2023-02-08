@@ -302,6 +302,14 @@ func (d *downloader) downloadFile(filePath, url string) error {
 	var get func(retry int) error
 
 	get = func(retry int) error {
+		bar := &utils.Bar{Since: time.Now(), Prefix: "Download", Content: fmt.Sprintf("%s", filepath.Base(filePath)), Max: 0, Length: 30}
+		d.progressBar.AddBar(bar)
+		defer func() {
+			if !bar.IsDone() {
+				d.progressBar.Cancel(bar, "Download failed")
+			}
+		}()
+
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return fmt.Errorf("failed to make request: %w", err)
@@ -313,8 +321,11 @@ func (d *downloader) downloadFile(filePath, url string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get content length: %w", err)
 		}
+		bar.Max = contentLength
 
 		if contentLength > d.maxSize || contentLength < 0 {
+
+			d.progressBar.Cancel(bar, fmt.Sprintf("%s out of range", utils.FormatSize(contentLength)))
 			return nil
 		}
 
@@ -326,6 +337,7 @@ func (d *downloader) downloadFile(filePath, url string) error {
 
 		// 429 too many requests
 		if resp.StatusCode == http.StatusTooManyRequests {
+			d.progressBar.Cancel(bar, "http 429")
 			if retry > 0 {
 				d.log.Printf("request too many times, retry after %.1f seconds...", d.retryInterval.Seconds())
 				time.Sleep(d.retryInterval)
@@ -336,17 +348,16 @@ func (d *downloader) downloadFile(filePath, url string) error {
 		}
 
 		if resp.StatusCode != http.StatusOK {
+			d.progressBar.Failed(bar, fmt.Errorf("http %d", resp.StatusCode))
 			return fmt.Errorf("failed to download file: %d", resp.StatusCode)
 		}
 
 		if len(resp.Cookies()) < d.MaxConcurrent {
 			d.cookies <- resp.Cookies()
 		}
-		bar := &utils.Bar{Since: time.Now(), Prefix: "Download", Content: fmt.Sprintf("%s", filepath.Base(file.Name())), Max: contentLength, Length: 30}
-		d.progressBar.AddBar(bar)
 		_, err = utils.Copy(file, resp.Body, bar)
 		if err != nil {
-			d.progressBar.Fail(bar, err)
+			d.progressBar.Failed(bar, err)
 			return fmt.Errorf("failed to write file: %w", err)
 		}
 		d.progressBar.Success(bar)
