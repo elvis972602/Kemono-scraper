@@ -260,8 +260,13 @@ func main() {
 		if nameRuleOnlyIndex {
 			ruleflag = true
 			pathFunc = func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-				ext := filepath.Ext(attachment.Name)
-				name := fmt.Sprintf("%d%s", i, ext)
+				var name string
+				if filepath.Ext(attachment.Name) == ".zip" {
+					name = attachment.Name
+				} else {
+					ext := filepath.Ext(attachment.Name)
+					name = fmt.Sprintf("%d%s", i, ext)
+				}
 				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
 			}
 		}
@@ -272,14 +277,20 @@ func main() {
 				if filepath.Ext(attachment.Name) == ".zip" {
 					name = attachment.Name
 				} else {
-					name = fmt.Sprintf("%d-%s", i, attachment.Name)
+					name = fmt.Sprintf("%d-%s", i, filepath.Base(attachment.Path))
 				}
 				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
 			}
 		}
 		if !ruleflag {
 			pathFunc = func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(attachment.Name))
+				var name string
+				if filepath.Ext(attachment.Name) == ".zip" {
+					name = attachment.Name
+				} else {
+					name = filepath.Base(attachment.Path)
+				}
+				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
 			}
 		}
 		downloaderOptions = append(downloaderOptions, downloader.SavePath(pathFunc))
@@ -291,7 +302,7 @@ func main() {
 				if filepath.Ext(attachment.Name) == ".zip" {
 					name = attachment.Name
 				} else {
-					name = fmt.Sprintf("%d-%s", i, attachment.Name)
+					name = fmt.Sprintf("%d-%s", i, filepath.Base(attachment.Path))
 				}
 				return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
 			}
@@ -301,8 +312,13 @@ func main() {
 		if nameRuleOnlyIndex {
 			var pathFunc func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string
 			pathFunc = func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-				ext := filepath.Ext(attachment.Name)
-				name := fmt.Sprintf("%d%s", i, ext)
+				var name string
+				if filepath.Ext(attachment.Name) == ".zip" {
+					name = attachment.Name
+				} else {
+					ext := filepath.Ext(attachment.Name)
+					name = fmt.Sprintf("%d%s", i, ext)
+				}
 				return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
 			}
 			downloaderOptions = append(downloaderOptions, downloader.SavePath(pathFunc))

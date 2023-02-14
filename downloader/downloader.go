@@ -173,7 +173,13 @@ func SetLog(log Log) DownloadOption {
 }
 
 func defaultSavePath(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-	return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(attachment.Name))
+	var name string
+	if filepath.Ext(attachment.Path) == ".zip" {
+		name = attachment.Name
+	} else {
+		name = filepath.Base(attachment.Path)
+	}
+	return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
 }
 
 // Async set the async download option
