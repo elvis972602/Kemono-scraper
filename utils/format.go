@@ -18,6 +18,15 @@ const (
 	TB
 )
 
+const (
+	Nanosecond  = 1
+	Microsecond = 1000 * Nanosecond
+	Millisecond = 1000 * Microsecond
+	Second      = 1000 * Millisecond
+	Minute      = 60 * Second
+	Hour        = 60 * Minute
+)
+
 func FormatSize(size int64) string {
 
 	switch {
@@ -71,15 +80,6 @@ func ParseSize(size string) int64 {
 }
 
 func FormatDuration(duration int64) string {
-	const (
-		Nanosecond  = 1
-		Microsecond = 1000 * Nanosecond
-		Millisecond = 1000 * Microsecond
-		Second      = 1000 * Millisecond
-		Minute      = 60 * Second
-		Hour        = 60 * Minute
-	)
-
 	switch {
 	case duration >= Hour:
 		return fmt.Sprintf("%.2dh%.2fm", duration/Hour, float64(duration%Hour)/Minute)
