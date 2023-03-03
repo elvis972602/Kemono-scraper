@@ -80,7 +80,7 @@ download timeout in seconds, default 300
 `--retry int`  
 retry times, default 3  
 `--retry-interval number`  
-retry interval in seconds, default 10. The number can be specified as either an int or float type 
+retry interval in seconds, default 10. The number can be specified as either an int or float type  
 `--rate-limit int`  
 rate limit in request/s, default 2
 
