@@ -115,7 +115,7 @@ func init() {
 	flag.StringVar(&minSize, "min-size", "", "min size, e.g. 10 MB, 1 GB")
 	flag.BoolVar(&withPrefixNumber, "with-prefix-number", false, "if add prefix number to file name: <index>-<file name> (zip file name is not changed)")
 	flag.BoolVar(&nameRuleOnlyIndex, "name-rule-only-index", false, "if use only index as file name(eg. 1.png, 2.png, ...)")
-	flag.IntVar(&downloadTimeout, "download-timeout", 300, "download timeout(second), default is 300s")
+	flag.IntVar(&downloadTimeout, "download-timeout", 1800, "download timeout(second), default is 1800s")
 	flag.IntVar(&retry, "retry", 3, "download retry, default is 3")
 	flag.Float64Var(&retryInterval, "retry-interval", 10, "download retry interval(second), default is 10s")
 	flag.IntVar(&maxDownloadParallel, "max-download-parallel", 3, "max download file concurrent, default is 3, async mode only")
