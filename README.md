@@ -72,7 +72,7 @@ download posts asynchronously, may cause the file order is not the same as the p
 `--max-download-parallel int`  
 max download file concurrent, default is 3, async mode only  
 `--with-prefix-number bool`  
-add prefix number to file name `<order>-<filename>`, default false  
+add prefix number to file name `<order>_<filename>`, default false  
 `--name-rule-only-index bool`  
 only use index as file name, default false  
 `--download-timeout int`  
