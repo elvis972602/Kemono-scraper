@@ -53,9 +53,9 @@ download post updated before date
 download post updated after date
 
 ### Image Filter Option
-`--extensionOnly [<ext>]`  
+`--extension-only [<ext>]`  
 download post with extension, separate by comma  
-`--extensionExcept [<ext>]`  
+`--extension-exclude [<ext>]`  
 download post without extension, separate by comma  
 `--max-size string`  
 download post with size less than max-size (e.g. 1 MB, 1KB, 1.5 gb, etc.)  
@@ -79,8 +79,8 @@ only use index as file name, default false
 download timeout in seconds, default 300  
 `--retry int`  
 retry times, default 3  
-`--retry-interval int`  
-retry interval in seconds, default 10  
+`--retry-interval number`  
+retry interval in seconds, default 10. The number can be specified as either an int or float type 
 `--rate-limit int`  
 rate limit in request/s, default 2
 
