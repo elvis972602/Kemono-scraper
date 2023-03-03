@@ -546,7 +546,13 @@ func setFlag() {
 		retry = config["retry"].(int)
 	}
 	if !isFlagPassed("retry-interval") && config["retry-interval"] != nil {
-		retryInterval = config["retry-interval"].(float64)
+		// check if retry-interval is float64 or int
+		_, ok := config["retry-interval"].(float64)
+		if !ok {
+			retryInterval = float64(config["retry-interval"].(int))
+		} else {
+			retryInterval = config["retry-interval"].(float64)
+		}
 	}
 	if !isFlagPassed("max-download-parallel") && config["max-download-parallel"] != nil {
 		maxDownloadParallel = config["max-download-parallel"].(int)
