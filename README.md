@@ -14,7 +14,7 @@ syntax:
 |---------------|--------------------|------|--------|------------|-------------|---------|
 | .kemono.party | FALSE              | /    | TRUE   | 1706755572 | kemono_auth | <value> |
 
-you can get cookies easily by using Chrome extension [Get cookies.txt](https://chrome.google.com/webstore/detail/get-cookiestxt/bgaddhkoddajcdgocldbbfleckgcbcid)
+you can get cookies easily by using Chrome extension [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
 #### Windows
 Windows can detect the cookie file automatically  
 `--cookie-browser string`  
