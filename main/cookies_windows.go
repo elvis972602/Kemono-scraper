@@ -16,7 +16,7 @@ func getCookies(s string) []*http.Cookie {
 		f, err := os.Stat(cookieFile)
 		if err != nil && f != nil {
 			log.Printf("load cookie from %s", cookieFile)
-			return parasCookeiFile(cookieFile)
+			return parasCookieFile(cookieFile)
 		}
 	}
 	if runtime.GOOS != "windows" {
