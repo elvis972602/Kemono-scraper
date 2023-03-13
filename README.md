@@ -14,7 +14,7 @@ syntax:
 |---------------|--------------------|------|--------|------------|-------------|---------|
 | .kemono.party | FALSE              | /    | TRUE   | 1706755572 | kemono_auth | <value> |
 
-you can get cookies easily by using Chrome extension [Get cookies.txt](https://chrome.google.com/webstore/detail/get-cookiestxt/bgaddhkoddajcdgocldbbfleckgcbcid)
+you can get cookies easily by using Chrome extension [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
 #### Windows
 Windows can detect the cookie file automatically  
 `--cookie-browser string`  
@@ -82,7 +82,7 @@ download posts asynchronously, may cause the file order is not the same as the p
 `--max-download-parallel int`  
 max download file concurrent, default is 3, async mode only  
 `--with-prefix-number bool`  
-add prefix number to file name `<order>-<filename>`, default false  
+add prefix number to file name `<order>_<filename>`, default false  
 `--name-rule-only-index bool`  
 only use index as file name, default false  
 `--download-timeout int`  
@@ -90,7 +90,7 @@ download timeout in seconds, default 300
 `--retry int`  
 retry times, default 3  
 `--retry-interval number`  
-retry interval in seconds, default 10. The number can be specified as either an int or float type 
+retry interval in seconds, default 10. The number can be specified as either an int or float type  
 `--rate-limit int`  
 rate limit in request/s, default 2
 
