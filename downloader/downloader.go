@@ -58,8 +58,6 @@ type downloader struct {
 
 	Header Header
 
-	cookies chan []*http.Cookie
-
 	retry int
 
 	retryInterval time.Duration
@@ -92,7 +90,6 @@ func NewDownloader(options ...DownloadOption) kemono.Downloader {
 	if !d.Async {
 		d.MaxConcurrent = 1
 	}
-	d.cookies = make(chan []*http.Cookie, d.MaxConcurrent)
 	if d.log == nil {
 		panic("log is nil")
 	}
@@ -296,15 +293,6 @@ func (d *downloader) downloadFile(filePath, url string) error {
 		return fmt.Errorf("new request error: %w", err)
 	}
 
-	if len(d.cookies) > 0 {
-		c, ok := <-d.cookies
-		if ok {
-			for _, cookie := range c {
-				req.AddCookie(cookie)
-			}
-		}
-	}
-
 	var get func(retry int) error
 
 	get = func(retry int) error {
@@ -358,9 +346,6 @@ func (d *downloader) downloadFile(filePath, url string) error {
 			return fmt.Errorf("failed to download file: %d", resp.StatusCode)
 		}
 
-		if len(resp.Cookies()) < d.MaxConcurrent {
-			d.cookies <- resp.Cookies()
-		}
 		_, err = utils.Copy(file, resp.Body, bar)
 		if err != nil {
 			d.progressBar.Failed(bar, err)

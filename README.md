@@ -65,6 +65,16 @@ download post with size greater than min-size (e.g. 1 MB, 1KB, 1.5 gb, etc.)
 ### Downloader Option
 `--output PATH`  
 output path  
+`template [<tags>]`  
+The template for customizing download paths, where you can use the following keywords to specify different parts of the path:  
+- `&lt;ks:creator&gt;`: creator name
+- `&lt;ks:ks:post&gt;`: post title  
+- `&lt;ks:index&gt;`: file index  
+- `&lt;ks:filename&gt;`: file name  
+- `&lt;ks:extension&gt;`: file extension  
+for example:  
+`&lt;ks:creator&gt;/&lt;ks:post&gt;/&lt;ks:index&gt;-&lt;ks:filename&gt;&lt;ks:extension&gt;`
+
 `--overwrite bool`  
 overwrite existing file  
 `--async bool`  
