@@ -48,6 +48,8 @@ var (
 	// download options
 	// output directory
 	output string
+	// path template
+	template string
 	// async
 	async bool
 	// max size
@@ -110,6 +112,7 @@ func init() {
 
 	// download options
 	flag.StringVar(&output, "output", "", "output directory")
+	flag.StringVar(&template, "template", "", "path template, e.g. <ks:creator>/<ks:post>/<ks:index>_<ks:filename><ks:extension>")
 	flag.BoolVar(&async, "async", false, "if download posts asynchronously, may cause the file order is not the same as the post order, can be used with --with-prefix-number, default false")
 	flag.StringVar(&maxSize, "max-size", "", "max size, e.g. 10 MB, 1 GB")
 	flag.StringVar(&minSize, "min-size", "", "min size, e.g. 10 MB, 1 GB")

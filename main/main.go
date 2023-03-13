@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	tmpl "text/template"
 	"time"
 )
 
@@ -253,76 +254,63 @@ func main() {
 		))
 	}
 
-	// check output
-	if output != "" {
-		var pathFunc func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string
-		ruleflag := false
+	if output == "" {
+		output = "./download"
+	}
+
+	if template == "" {
+		var t *tmpl.Template
+		defaultTemp, err := LoadPathTmpl(TmplDefault, output)
+		if err != nil {
+			log.Fatalf("load template failed: %s", err)
+		}
 		if nameRuleOnlyIndex {
-			ruleflag = true
-			pathFunc = func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-				var name string
-				if filepath.Ext(attachment.Name) == ".zip" {
-					name = attachment.Name
-				} else {
-					ext := filepath.Ext(attachment.Name)
-					name = fmt.Sprintf("%d%s", i, ext)
-				}
-				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
+			t, err = LoadPathTmpl(TmplIndexNumber, output)
+			if err != nil {
+				log.Fatalf("load template failed: %s", err)
 			}
-		}
-		if withPrefixNumber {
-			ruleflag = true
-			pathFunc = func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-				var name string
-				if filepath.Ext(attachment.Name) == ".zip" {
-					name = attachment.Name
-				} else {
-					name = fmt.Sprintf("%d-%s", i, filepath.Base(attachment.Path))
-				}
-				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
+		} else if withPrefixNumber {
+			t, err = LoadPathTmpl(TmplWithPrefixNumber, output)
+			if err != nil {
+				log.Fatalf("load template failed: %s", err)
 			}
+		} else {
+			t = defaultTemp
 		}
-		if !ruleflag {
-			pathFunc = func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-				var name string
-				if filepath.Ext(attachment.Name) == ".zip" {
-					name = attachment.Name
-				} else {
-					name = filepath.Base(attachment.Path)
-				}
-				return fmt.Sprintf(filepath.Join("%s", "%s", "%s", "%s"), output, utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
+		downloaderOptions = append(downloaderOptions, downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
+			ext := filepath.Ext(attachment.Name)
+			filename := filepath.Base(attachment.Path)[0 : len(filepath.Base(attachment.Path))-len(ext)]
+			pathConfig := &PathConfig{
+				Creator:   utils.ValidDirectoryName(creator.Name),
+				Post:      utils.ValidDirectoryName(DirectoryName(post)),
+				Index:     i,
+				Filename:  utils.ValidDirectoryName(filename),
+				Extension: ext,
 			}
-		}
-		downloaderOptions = append(downloaderOptions, downloader.SavePath(pathFunc))
+			if ext == ".zip" || ext == ".rar" || ext == ".7z" {
+				return ExecutePathTmpl(defaultTemp, pathConfig)
+			} else {
+				return ExecutePathTmpl(t, pathConfig)
+			}
+		}))
 	} else {
-		if withPrefixNumber {
-			var pathFunc func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string
-			pathFunc = func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-				var name string
-				if filepath.Ext(attachment.Name) == ".zip" {
-					name = attachment.Name
-				} else {
-					name = fmt.Sprintf("%d-%s", i, filepath.Base(attachment.Path))
-				}
-				return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
-			}
-			downloaderOptions = append(downloaderOptions, downloader.SavePath(pathFunc))
+		t, err := LoadPathTmpl(template, output)
+		if err != nil {
+			log.Fatalf("load template failed: %s", err)
 		}
 
-		if nameRuleOnlyIndex {
-			var pathFunc func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string
-			pathFunc = func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
-				var name string
-				if filepath.Ext(attachment.Name) == ".zip" {
-					name = attachment.Name
-				} else {
-					ext := filepath.Ext(attachment.Name)
-					name = fmt.Sprintf("%d%s", i, ext)
-				}
-				return fmt.Sprintf(filepath.Join("./download", "%s", "%s", "%s"), utils.ValidDirectoryName(creator.Name), utils.ValidDirectoryName(DirectoryName(post)), utils.ValidDirectoryName(name))
+		downloaderOptions = append(downloaderOptions, downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
+			ext := filepath.Ext(attachment.Path)
+			filename := filepath.Base(attachment.Path)[0 : len(filepath.Base(attachment.Path))-len(ext)]
+			pathConfig := &PathConfig{
+				Creator:   utils.ValidDirectoryName(creator.Name),
+				Post:      utils.ValidDirectoryName(DirectoryName(post)),
+				Index:     i,
+				Filename:  utils.ValidDirectoryName(filename),
+				Extension: ext,
 			}
-			downloaderOptions = append(downloaderOptions, downloader.SavePath(pathFunc))
-		}
+			return ExecutePathTmpl(t, pathConfig)
+		}))
 	}
 
 	if maxSize != "" {
@@ -365,6 +353,9 @@ func main() {
 	} else {
 		downloaderOptions = append(downloaderOptions, downloader.RateLimit(rateLimit))
 	}
+	//if proxy != "" {
+	//	downloaderOptions = append(downloaderOptions, downloader.Proxy(proxy))
+	//}
 
 	ctx := context.Background()
 
@@ -523,6 +514,9 @@ func setFlag() {
 	if !isFlagPassed("output") && config["output"] != nil {
 		output = config["output"].(string)
 	}
+	if !isFlagPassed("template") && config["template"] != nil {
+		template = config["template"].(string)
+	}
 	if !isFlagPassed("async") && config["async"] != nil {
 		async = config["async"].(bool)
 	}
@@ -560,6 +554,9 @@ func setFlag() {
 	if !isFlagPassed("rate-limit") && config["rate-limit"] != nil {
 		rateLimit = config["rate-limit"].(int)
 	}
+	//if !isFlagPassed("proxy") && config["proxy"] != nil {
+	//	proxy = config["proxy"].(string)
+	//}
 	if !isFlagPassed("fav-creator") && config["fav-creator"] != nil {
 		favoriteCreator = config["fav-creator"].(bool)
 	}
@@ -584,6 +581,7 @@ func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCre
 	if err != nil {
 		log.Fatalf("Error creating request: %s", err)
 	}
+	req.Header.Set("Host", fmt.Sprintf("%s.party", s))
 	for _, v := range cookie {
 		req.AddCookie(v)
 	}
@@ -608,6 +606,7 @@ func fetchFavoritePosts(s string, cookie []*http.Cookie) []kemono.PostRaw {
 	if err != nil {
 		log.Fatalf("Error creating request: %s", err)
 	}
+	req.Header.Set("Host", fmt.Sprintf("%s.party", s))
 	for _, v := range cookie {
 		req.AddCookie(v)
 	}
@@ -627,7 +626,7 @@ func fetchFavoritePosts(s string, cookie []*http.Cookie) []kemono.PostRaw {
 	return posts
 }
 
-func parasCookeiFile(cookieFile string) []*http.Cookie {
+func parasCookieFile(cookieFile string) []*http.Cookie {
 	var (
 		cookies []*http.Cookie
 		domain  string
