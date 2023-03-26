@@ -90,7 +90,7 @@ add prefix number to file name `<order>_<filename>`, default false
 `--name-rule-only-index bool`  
 only use index as file name, default false  
 `--download-timeout int`  
-download timeout in seconds, default 300  
+download timeout in seconds, default 1800  
 `--retry int`  
 retry times, default 3  
 `--retry-interval number`  

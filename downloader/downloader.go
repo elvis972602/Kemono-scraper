@@ -15,11 +15,20 @@ import (
 )
 
 const (
-	maxConcurrent = 5
-	maxConnection = 16
-	rateLimit     = 2
-	UserAgent     = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-	Accept        = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
+	maxConcurrent           = 5
+	maxConnection           = 100
+	rateLimit               = 2
+	UserAgent               = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+	Accept                  = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+	AcceptEncoding          = "gzip, deflate, br"
+	AcceptLanguage          = "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7"
+	SecChUA                 = "\"Google Chrome\";v=\"111\", \"Not(A:Brand\";v=\"8\", \"Chromium\";v=\"111\""
+	SecChUAMobile           = "?0"
+	SecFetchDest            = "document"
+	SecFetchMode            = "navigate"
+	SecFetchSite            = "none"
+	SecFetchUser            = "?1"
+	UpgradeInsecureRequests = "1"
 )
 
 type Log interface {
@@ -36,8 +45,6 @@ type downloader struct {
 	BaseURL string
 	// Max concurrent download
 	MaxConcurrent int
-	// Max connection to the server
-	MaxConnection int
 
 	// Async download, download several files at the same time,
 	// may cause the file order is not the same as the post order
@@ -65,13 +72,14 @@ type downloader struct {
 	progressBar *utils.ProgressBar
 
 	log Log
+
+	client *http.Client
 }
 
 func NewDownloader(options ...DownloadOption) kemono.Downloader {
 	// with default options
 	d := &downloader{
 		MaxConcurrent: maxConcurrent,
-		MaxConnection: maxConnection,
 		SavePath:      defaultSavePath,
 		Timeout:       300 * time.Second,
 		Async:         false,
@@ -80,6 +88,14 @@ func NewDownloader(options ...DownloadOption) kemono.Downloader {
 		minSize:       0,
 		reteLimiter:   utils.NewRateLimiter(rateLimit),
 		retry:         2,
+		client: &http.Client{
+			Transport: &http.Transport{
+				MaxIdleConns:          maxConnection,
+				MaxConnsPerHost:       maxConnection,
+				MaxIdleConnsPerHost:   maxConnection,
+				ResponseHeaderTimeout: 30 * time.Second,
+			},
+		},
 	}
 	for _, option := range options {
 		option(d)
@@ -304,7 +320,7 @@ func (d *downloader) downloadFile(filePath, url string) error {
 			}
 		}()
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := d.client.Do(req)
 		if err != nil {
 			return fmt.Errorf("failed to make request: %w", err)
 		}
@@ -317,17 +333,22 @@ func (d *downloader) downloadFile(filePath, url string) error {
 		}
 		bar.Max = contentLength
 
-		if contentLength > d.maxSize || contentLength < 0 {
+		if contentLength > d.maxSize || contentLength < d.minSize {
 
 			d.progressBar.Cancel(bar, fmt.Sprintf("%s out of range", utils.FormatSize(contentLength)))
 			return nil
 		}
 
-		file, err := os.Create(filePath)
+		tmpFilePath := filePath + ".tmp"
+		tmpFile, err := os.Create(tmpFilePath)
 		if err != nil {
-			return fmt.Errorf("failed to create file: %w", err)
+			// 删除临时文件
+			_ = os.Remove(tmpFilePath)
+			return fmt.Errorf("create tmp file error: %w", err)
 		}
-		defer file.Close()
+		defer func() {
+			_ = tmpFile.Close()
+		}()
 
 		// 429 too many requests
 		if resp.StatusCode == http.StatusTooManyRequests {
@@ -346,11 +367,20 @@ func (d *downloader) downloadFile(filePath, url string) error {
 			return fmt.Errorf("failed to download file: %d", resp.StatusCode)
 		}
 
-		_, err = utils.Copy(file, resp.Body, bar)
+		_, err = utils.Copy(tmpFile, resp.Body, bar)
 		if err != nil {
 			d.progressBar.Failed(bar, err)
 			return fmt.Errorf("failed to write file: %w", err)
 		}
+
+		// rename the tmp file to the file
+		_ = tmpFile.Close()
+		// 重命名文件
+		err = os.Rename(tmpFilePath, filePath)
+		if err != nil {
+			return fmt.Errorf("rename file error: %w", err)
+		}
+
 		d.progressBar.Success(bar)
 		return nil
 	}
@@ -390,19 +420,6 @@ func checkFileExitAndComplete(filePath, fileHash string) (complete bool, err err
 		}
 	}
 	return false, nil
-}
-
-func checkContentLength(url string) (int64, error) {
-	req, err := http.NewRequest("HEAD", url, nil)
-	if err != nil {
-		return 0, err
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	return strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
 }
 
 func newGetRequest(ctx context.Context, header Header, url string) (*http.Request, error) {

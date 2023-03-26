@@ -379,6 +379,22 @@ func main() {
 		options[Kemono] = append(options[Kemono], sharedOptions...)
 		options[Kemono] = append(options[Kemono], kemono.WithDomain("kemono"))
 		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://kemono.party"))
+		downloaderOptions = append(downloaderOptions, downloader.WithHeader(downloader.Header{
+			"Host":                      "kemono.party",
+			"User-Agent":                downloader.UserAgent,
+			"Referer":                   "https://kemono.party",
+			"Accept":                    downloader.Accept,
+			"Accept-Language":           downloader.AcceptLanguage,
+			"Accept-Encoding":           downloader.AcceptEncoding,
+			"Sec-Ch-Ua":                 downloader.SecChUA,
+			"Sec-Ch-Ua-Mobile":          downloader.SecChUAMobile,
+			"Sec-Fetch-Dest":            downloader.SecFetchDest,
+			"Sec-Fetch-Mode":            downloader.SecFetchMode,
+			"Sec-Fetch-Site":            downloader.SecFetchSite,
+			"Sec-Fetch-User":            downloader.SecFetchUser,
+			"Upgrade-Insecure-Requests": downloader.UpgradeInsecureRequests,
+			"Connection":                "keep-alive",
+		}))
 		KemonoDownloader = downloader.NewDownloader(downloaderOptions...)
 		options[Kemono] = append(options[Kemono], kemono.SetDownloader(KemonoDownloader))
 		KKemono = kemono.NewKemono(options[Kemono]...)
@@ -388,6 +404,22 @@ func main() {
 		options[Coomer] = append(options[Coomer], sharedOptions...)
 		options[Coomer] = append(options[Coomer], kemono.WithDomain("coomer"))
 		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://coomer.party"))
+		downloaderOptions = append(downloaderOptions, downloader.WithHeader(downloader.Header{
+			"Host":                      "coomer.party",
+			"User-Agent":                downloader.UserAgent,
+			"Referer":                   "https://coomer.party/",
+			"Accept":                    downloader.Accept,
+			"Accept-Language":           downloader.AcceptLanguage,
+			"Accept-Encoding":           downloader.AcceptEncoding,
+			"Sec-Ch-Ua":                 downloader.SecChUA,
+			"Sec-Ch-Ua-Mobile":          downloader.SecChUAMobile,
+			"Sec-Fetch-Dest":            downloader.SecFetchDest,
+			"Sec-Fetch-Mode":            downloader.SecFetchMode,
+			"Sec-Fetch-Site":            downloader.SecFetchSite,
+			"Sec-Fetch-User":            downloader.SecFetchUser,
+			"Upgrade-Insecure-Requests": downloader.UpgradeInsecureRequests,
+			"Connection":                "keep-alive",
+		}))
 		CoomerDownloader = downloader.NewDownloader(downloaderOptions...)
 		options[Coomer] = append(options[Coomer], kemono.SetDownloader(CoomerDownloader))
 		options[Coomer] = append(options[Coomer], kemono.WithBanner(true))

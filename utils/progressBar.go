@@ -73,7 +73,7 @@ func (p *Bar) FailString(err string) string {
 	if speed < 0 {
 		speed = 0
 	}
-	return ShortenString(fmt.Sprintf("\033[31m[Failed]\033[0m%s[%s] %.1f%% (%s/s) [%s] %s", err, strings.Repeat("=", intPre)+">"+strings.Repeat("x", p.Length-intPre), pre, FormatSize(speed), FormatSize(p.Max), p.Content), fmt.Sprintf("%s", p.Content), "")
+	return ShortenString(fmt.Sprintf("\033[31m[Failed]\033[0m%s[%s] %.1f%% (%s/s) [%s] ", err, strings.Repeat("=", intPre)+">"+strings.Repeat("x", p.Length-intPre), pre, FormatSize(speed), FormatSize(p.Max)), fmt.Sprintf("%s", p.Content), "")
 }
 
 func (p *Bar) CancelString(err string) string {
