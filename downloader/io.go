@@ -1,15 +1,15 @@
-package utils
+package downloader
 
 import (
 	"errors"
 	"io"
 )
 
-func Copy(dst io.Writer, src io.Reader, bar *Bar) (written int64, err error) {
+func Copy(dst io.Writer, src io.Reader, bar *ProgressBar) (written int64, err error) {
 	return copyBuffer(dst, src, nil, bar)
 }
 
-func copyBuffer(dst io.Writer, src io.Reader, buf []byte, bar *Bar) (written int64, err error) {
+func copyBuffer(dst io.Writer, src io.Reader, buf []byte, bar *ProgressBar) (written int64, err error) {
 	if buf == nil {
 		size := 32 * 1024
 		if l, ok := src.(*io.LimitedReader); ok && int64(size) > l.N {

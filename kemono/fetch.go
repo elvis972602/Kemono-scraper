@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/elvis972602/kemono-scraper/utils"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
@@ -106,7 +105,7 @@ func (k *Kemono) DownloadPosts(creator Creator, posts []Post) (err error) {
 		for i := 0; i < len(errChan); i++ {
 			err, ok := <-errChan
 			if ok {
-				log.Println("download error: ", err)
+				k.log.Printf("download post error: %s", err)
 				// TODO: record error...
 			} else {
 				break
