@@ -69,7 +69,7 @@ type downloader struct {
 
 	retryInterval time.Duration
 
-	progressBar *utils.ProgressBar
+	progress *Progress
 
 	log Log
 
@@ -110,17 +110,9 @@ func NewDownloader(options ...DownloadOption) kemono.Downloader {
 		panic("log is nil")
 	}
 
-	d.progressBar = utils.NewProgressBar(d.log)
+	d.progress = NewProgress(d.log)
+	d.progress.Run(100 * time.Millisecond)
 
-	go func() {
-		tick := time.NewTicker(100 * time.Millisecond)
-		for {
-			select {
-			case <-tick.C:
-				d.progressBar.SetStatus()
-			}
-		}
-	}()
 	return d
 }
 
@@ -246,7 +238,7 @@ func (d *downloader) Download(files <-chan kemono.FileWithIndex, creator kemono.
 						savePath := d.SavePath(creator, post, file.Index, file.File)
 
 						if err := d.download(savePath, url, hash); err != nil {
-							errCh <- errors.New("download file error: " + err.Error())
+							errCh <- err
 							continue
 						}
 					}
@@ -277,7 +269,7 @@ func (d *downloader) download(filePath, url, fileHash string) error {
 			return err
 		}
 		if complete {
-			d.log.Printf(utils.ShortenString("file ", filePath, " already exists, skip"))
+			d.log.Printf("file %s already exists, skip", filePath)
 			return nil
 		}
 	}
@@ -289,18 +281,22 @@ func (d *downloader) download(filePath, url, fileHash string) error {
 	}
 	// download the file
 	if err := d.downloadFile(filePath, url); err != nil {
-		err = errors.New("download file error: " + err.Error())
+		//err = errors.New("download file error: " + err.Error())
 		return err
 	}
 	time.Sleep(1 * time.Second)
 	return nil
 }
 
+const (
+	O_ALLOW_DELETE int = 0x00000004
+)
+
 // download the file from the url, and save to the file
 func (d *downloader) downloadFile(filePath, url string) error {
 	d.reteLimiter.Token()
 
-	//progressBar.Printf("downloading file %s", url)
+	//progress.Printf("downloading file %s", url)
 	ctx, cancel := context.WithTimeout(context.Background(), d.Timeout)
 	defer cancel()
 
@@ -312,11 +308,11 @@ func (d *downloader) downloadFile(filePath, url string) error {
 	var get func(retry int) error
 
 	get = func(retry int) error {
-		bar := &utils.Bar{Since: time.Now(), Prefix: "Download", Content: fmt.Sprintf("%s", filepath.Base(filePath)), Max: 0, Length: 30}
-		d.progressBar.AddBar(bar)
+		bar := NewProgressBar(fmt.Sprintf("%s", filepath.Base(filePath)), 0, 30)
+		d.progress.AddBar(bar)
 		defer func() {
 			if !bar.IsDone() {
-				d.progressBar.Cancel(bar, "Download failed")
+				d.progress.Failed(bar, fmt.Errorf("download failed"))
 			}
 		}()
 
@@ -334,54 +330,57 @@ func (d *downloader) downloadFile(filePath, url string) error {
 		bar.Max = contentLength
 
 		if contentLength > d.maxSize || contentLength < d.minSize {
-
-			d.progressBar.Cancel(bar, fmt.Sprintf("%s out of range", utils.FormatSize(contentLength)))
+			d.progress.Cancel(bar, "size out of range")
 			return nil
 		}
 
-		tmpFilePath := filePath + ".tmp"
-		tmpFile, err := os.Create(tmpFilePath)
-		if err != nil {
-			// 删除临时文件
-			_ = os.Remove(tmpFilePath)
-			return fmt.Errorf("create tmp file error: %w", err)
-		}
-		defer func() {
-			_ = tmpFile.Close()
-		}()
-
 		// 429 too many requests
 		if resp.StatusCode == http.StatusTooManyRequests {
-			d.progressBar.Cancel(bar, "http 429")
+			d.progress.Failed(bar, fmt.Errorf("http 429"))
 			if retry > 0 {
 				d.log.Printf("request too many times, retry after %.1f seconds...", d.retryInterval.Seconds())
 				time.Sleep(d.retryInterval)
-				return get(retry - 1)
+				return get(retry)
 			} else {
 				return fmt.Errorf("failed to download file: %d", resp.StatusCode)
 			}
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			d.progressBar.Failed(bar, fmt.Errorf("http %d", resp.StatusCode))
+			d.progress.Failed(bar, fmt.Errorf("http %d", resp.StatusCode))
 			return fmt.Errorf("failed to download file: %d", resp.StatusCode)
 		}
 
-		_, err = utils.Copy(tmpFile, resp.Body, bar)
+		tmpFilePath := filePath + ".tmp"
+		tmpFile, err := os.Create(tmpFilePath)
 		if err != nil {
-			d.progressBar.Failed(bar, err)
+			// delete the tmp file
+			_ = os.Remove(tmpFilePath)
+			return fmt.Errorf("create tmp file error: %w", err)
+		}
+
+		defer func() {
+			_ = tmpFile.Close()
+		}()
+
+		_, err = Copy(tmpFile, resp.Body, bar)
+		if err != nil {
+			d.progress.Failed(bar, err)
 			return fmt.Errorf("failed to write file: %w", err)
 		}
 
 		// rename the tmp file to the file
-		_ = tmpFile.Close()
+		err = tmpFile.Close()
+		if err != nil {
+			return fmt.Errorf("close tmp file error: %w", err)
+		}
 		// 重命名文件
 		err = os.Rename(tmpFilePath, filePath)
 		if err != nil {
 			return fmt.Errorf("rename file error: %w", err)
 		}
 
-		d.progressBar.Success(bar)
+		d.progress.Success(bar)
 		return nil
 	}
 

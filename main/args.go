@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/mattn/go-colorable"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
@@ -147,6 +148,7 @@ func init() {
 		log.Fatalf("unmarshal config file error: %v", err)
 	}
 
+	log.SetOutput(colorable.NewColorableStdout())
 }
 
 func isFlagPassed(name string) bool {
