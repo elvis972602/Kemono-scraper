@@ -6,11 +6,11 @@ import (
 	"context"
 	"fmt"
 	"golang.org/x/term"
-	"golang.org/x/text/width"
 	"io"
 	"os"
+	"regexp"
 	"strings"
-	"unicode"
+	"unicode/utf8"
 )
 
 // print directly to the terminal
@@ -85,6 +85,7 @@ func (t *Terminal) Run(ctx context.Context) {
 // run listens on the channels and updates the terminal screen.
 func (t *Terminal) run(ctx context.Context) {
 	var status []string
+	var lastLineCount int
 	for {
 		select {
 		case <-ctx.Done():
@@ -92,8 +93,12 @@ func (t *Terminal) run(ctx context.Context) {
 			return
 
 		case msg := <-t.msg:
-
+			for i := 0; i < lastLineCount-1; i++ {
+				t.clearCurrentLine(t.wr, t.fd)
+				t.moveCursorUp(t.wr, t.fd, 1)
+			}
 			t.clearCurrentLine(t.wr, t.fd)
+			io.Writer(t.wr).Write([]byte("\r"))
 
 			var dst io.Writer
 			if msg.err {
@@ -109,7 +114,7 @@ func (t *Terminal) run(ctx context.Context) {
 				dst = t.wr
 			}
 
-			if _, err := io.WriteString(dst, msg.line); err != nil {
+			if _, err := io.WriteString(dst, "\033[0m"+msg.line); err != nil {
 				fmt.Fprintf(os.Stderr, "write failed: %v\n", err)
 				continue
 			}
@@ -121,7 +126,13 @@ func (t *Terminal) run(ctx context.Context) {
 			}
 
 		case stat := <-t.status:
-
+			for i := 0; i < lastLineCount-1; i++ {
+				t.clearCurrentLine(t.wr, t.fd)
+				t.moveCursorUp(t.wr, t.fd, 1)
+			}
+			t.clearCurrentLine(t.wr, t.fd)
+			io.Writer(t.wr).Write([]byte("\r"))
+			lastLineCount = len(stat.lines)
 			status = status[:0]
 			status = append(status, stat.lines...)
 			t.writeStatus(status)
@@ -131,7 +142,7 @@ func (t *Terminal) run(ctx context.Context) {
 
 func (t *Terminal) writeStatus(status []string) {
 	for _, line := range status {
-		t.clearCurrentLine(t.wr, t.fd)
+		//t.clearCurrentLine(t.wr, t.fd)
 
 		_, err := t.wr.WriteString(line)
 		if err != nil {
@@ -143,11 +154,6 @@ func (t *Terminal) writeStatus(status []string) {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "flush failed: %v\n", err)
 		}
-	}
-
-	// move cursor up to the beginning of the status lines
-	if len(status) > 0 {
-		t.moveCursorUp(t.wr, t.fd, len(status)-1)
 	}
 
 	err := t.wr.Flush()
@@ -255,34 +261,50 @@ func (t *Terminal) Errorf(msg string, args ...interface{}) {
 	t.Error(s)
 }
 
+var asciiColorPat = regexp.MustCompile(`(\x1b\[[0-9;]*m)?([\s\S]*?)(\x1b\[[0-9;]*m|$)`)
+
+// Truncate truncates a string to a given width, taking into account ANSI color
 func Truncate(s string, w int) string {
-	if len(s) < w {
-		// Since the display width of a character is at most 2
-		// and all of ASCII (single byte per rune) has width 1,
-		// no character takes more bytes to encode than its width.
-		return s
-	}
-
-	for i, r := range s {
-		w--
-		if r > unicode.MaxASCII && wideRune(r) {
-			w--
+	var (
+		builder strings.Builder
+	)
+	for _, m := range asciiColorPat.FindAllStringSubmatchIndex(s, -1) {
+		for i := 0; i < len(m); i++ {
+			if m[i] == -1 {
+				m[i] = 0
+			}
 		}
-
-		if w < 0 {
-			return s[:i]
+		// write ascii color
+		builder.WriteString(s[m[2]:m[3]])
+		// get text length
+		textLen := utf8.RuneCountInString(s[m[4]:m[5]])
+		if textLen > w {
+			cutRune := truncateString(s[m[4]:m[5]], w)
+			builder.Write([]byte(string(cutRune)))
+			break
+		} else {
+			builder.WriteString(s[m[4]:m[5]])
+			w -= textLen
+		}
+		if len(m) == 8 {
+			builder.WriteString(s[m[6]:m[7]])
 		}
 	}
-
-	return s
+	return builder.String()
 }
 
-// Guess whether r would occupy two terminal cells instead of one.
-// This cannot be determined exactly without knowing the terminal font,
-// so we treat all ambigous runes as full-width, i.e., two cells.
-func wideRune(r rune) bool {
-	kind := width.LookupRune(r).Kind()
-	return kind != width.Neutral && kind != width.EastAsianNarrow
+func truncateString(runes string, w int) []rune {
+	var cutRunes []rune
+	for i := 0; i < len(runes); {
+		_, size := utf8.DecodeRuneInString(runes[i:])
+		if w < size {
+			break
+		}
+		cutRunes = append(cutRunes, []rune(runes[i:i+size])...)
+		w -= size
+		i += size
+	}
+	return cutRunes
 }
 
 // SetStatus updates the status lines.
