@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/elvis972602/kemono-scraper/kemono"
 	"github.com/elvis972602/kemono-scraper/utils"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -363,18 +364,18 @@ func (d *downloader) downloadFile(filePath, url string) error {
 			_ = tmpFile.Close()
 		}()
 
-		_, err = Copy(tmpFile, resp.Body, bar)
+		_, err = io.Copy(io.MultiWriter(tmpFile, bar), resp.Body)
 		if err != nil {
 			d.progress.Failed(bar, err)
 			return fmt.Errorf("failed to write file: %w", err)
 		}
 
-		// rename the tmp file to the file
 		err = tmpFile.Close()
 		if err != nil {
 			return fmt.Errorf("close tmp file error: %w", err)
 		}
-		// 重命名文件
+
+		// rename the tmp file to the file
 		err = os.Rename(tmpFilePath, filePath)
 		if err != nil {
 			return fmt.Errorf("rename file error: %w", err)
