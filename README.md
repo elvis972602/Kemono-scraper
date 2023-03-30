@@ -2,7 +2,7 @@
 A simple downloader to  download images from kemono.party
 
 ## Note about DDoS-Guard Issue
-The version before v0.0.4 will blocked by DDoS-Guard, please upgrade to the latest release.
+The version before v0.0.4 will be blocked by DDoS-Guard, please upgrade to the latest release.
 
 ## Flag Option
 
@@ -100,7 +100,8 @@ rate limit in request/s, default 2
 
 ## Config File
 config file is in `./config.yaml`  
-Option in config is same as flag option, but without `--` prefix, and will be overridden by flag option .Can set the not often changed option in config file, and use flag option to override it  
+Options in config file are the same as command-line flag options, but will be overridden by flags (if both exists).
+Usually used for setting the default settings for the scraper.  
 Example:  
 ```yaml
 banner: true

@@ -1,6 +1,8 @@
 package downloader
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestProgressBar_Builder(t *testing.T) {
 	// download
@@ -11,7 +13,7 @@ func TestProgressBar_Builder(t *testing.T) {
 	)
 	for i := 0; i <= 100; i++ {
 		t.Log(bar.String(BarModeDownload))
-		bar.Add(1)
+		bar.Add64(1)
 	}
 
 	// success
@@ -22,7 +24,7 @@ func TestProgressBar_Builder(t *testing.T) {
 	)
 	for i := 0; i <= 100; i++ {
 		t.Log(bar.String(BarModeSuccess))
-		bar.Add(1)
+		bar.Add64(1)
 	}
 
 	// failed
@@ -33,7 +35,7 @@ func TestProgressBar_Builder(t *testing.T) {
 	)
 	for i := 0; i <= 100; i++ {
 		t.Log(bar.String(BarModeFailed))
-		bar.Add(1)
+		bar.Add64(1)
 	}
 
 	// cancel
@@ -44,7 +46,7 @@ func TestProgressBar_Builder(t *testing.T) {
 	)
 	for i := 0; i <= 100; i++ {
 		t.Log(bar.String(BarModeCancel))
-		bar.Add(1)
+		bar.Add64(1)
 	}
 
 }

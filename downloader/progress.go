@@ -5,27 +5,19 @@ import (
 	"github.com/elvis972602/kemono-scraper/utils"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 const (
-	DeepBlack  = "\x1b[38;5;235m"
-	Black      = "\x1b[38;5;238m"
 	DeepRed    = "\x1b[38;5;196m"
 	Red        = "\x1b[38;5;197m"
-	DeepGreen  = "\x1b[38;5;76m"
-	Green      = "\x1b[38;5;76m"
-	DeepYellow = "\x1b[38;5;214m"
-	Yellow     = "\x1b[38;5;226m"
-	DeepBlue   = "\x1b[38;5;21m"
-	Blue       = "\x1b[38;5;38m"
-	DeepPurple = "\x1b[38;5;141m"
-	Purple     = "\x1b[38;5;134m"
-	DeepCyan   = "\x1b[38;5;37m"
-	Cyan       = "\x1b[38;5;39m"
-	Grey       = "\x1b[38;5;242m"
-	White      = "\x1b[38;5;255m"
-	DeepWhite  = "\x1b[38;5;254m"
+	Green      = "\x1b[38;5;106m"
+	DeepYellow = "\x1b[38;5;178m"
+	Blue       = "\x1b[38;5;67m"
+	Purple     = "\x1b[38;5;133m"
+	Grey       = "\x1b[38;5;243m"
+	White      = "\x1b[38;5;251m"
 )
 
 const (
@@ -35,7 +27,7 @@ const (
 	BarModeSuccess  = "Success"
 )
 
-type ProgressBar struct {
+type progressBar struct {
 	Start   time.Time
 	Content string
 	Max     int64
@@ -44,19 +36,27 @@ type ProgressBar struct {
 	done    bool
 }
 
-func NewProgressBar(content string, max int64, length int) *ProgressBar {
-	return &ProgressBar{Start: time.Now(), Content: content, Max: max, Length: length}
+func NewProgressBar(content string, max int64, length int) *progressBar {
+	return &progressBar{Start: time.Now(), Content: content, Max: max, Length: length}
 }
 
-func (p *ProgressBar) Add(n int64) {
-	p.cur += n
+func (p *progressBar) Add(n int) {
+	p.Add64(int64(n))
 }
 
-func (p *ProgressBar) Set(n int64) {
-	p.cur = n
+func (p *progressBar) Add64(n int64) {
+	atomic.AddInt64(&p.cur, n)
 }
 
-func (p *ProgressBar) String(mode string) string {
+func (p *progressBar) Set(n int) {
+	p.Set64(int64(n))
+}
+
+func (p *progressBar) Set64(n int64) {
+	atomic.StoreInt64(&p.cur, n)
+}
+
+func (p *progressBar) String(mode string) string {
 	//var process string
 	var pre float64
 	if p.Max == 0 {
@@ -72,16 +72,22 @@ func (p *ProgressBar) String(mode string) string {
 	return buildProgressBar(utils.FormatDuration(int64(time.Since(p.Start))), mode, utils.FormatSize(speed), utils.FormatSize(p.Max), p.Content, pre, 30, mode)
 }
 
-func (p *ProgressBar) Done() {
+func (p *progressBar) Done() {
 	p.done = true
 }
 
-func (p *ProgressBar) IsDone() bool {
+func (p *progressBar) IsDone() bool {
 	return p.done
 }
 
+func (p *progressBar) Write(b []byte) (n int, err error) {
+	n = len(b)
+	p.Add(n)
+	return
+}
+
 type Progress struct {
-	progressBars []*ProgressBar
+	progressBars []*progressBar
 	count        int
 	pre          int
 	lock         sync.Mutex
@@ -92,13 +98,13 @@ func NewProgress(log Log) *Progress {
 	return &Progress{pre: 0, log: log}
 }
 
-func (p *Progress) AddBar(bar *ProgressBar) {
+func (p *Progress) AddBar(bar *progressBar) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.progressBars = append(p.progressBars, bar)
 }
 
-func (p *Progress) Remove(bar *ProgressBar) {
+func (p *Progress) Remove(bar *progressBar) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	for i, v := range p.progressBars {
@@ -112,14 +118,14 @@ func (p *Progress) Remove(bar *ProgressBar) {
 	}
 }
 
-func (p *Progress) Success(bar *ProgressBar) {
+func (p *Progress) Success(bar *progressBar) {
 	bar.Done()
 	p.Remove(bar)
 	p.SetStatus()
 	p.Print(bar.String(BarModeSuccess))
 }
 
-func (p *Progress) Failed(bar *ProgressBar, err error) {
+func (p *Progress) Failed(bar *progressBar, err error) {
 	bar.Done()
 	p.Remove(bar)
 	p.SetStatus()
@@ -127,7 +133,7 @@ func (p *Progress) Failed(bar *ProgressBar, err error) {
 	p.Print(DeepRed + err.Error())
 }
 
-func (p *Progress) Cancel(bar *ProgressBar, err string) {
+func (p *Progress) Cancel(bar *progressBar, err string) {
 	bar.Done()
 	p.Remove(bar)
 	p.SetStatus()
