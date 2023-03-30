@@ -28,3 +28,7 @@ func CanUpdateStatus(fd uintptr) bool {
 	// TODO actually read termcap db and detect if terminal supports what we need
 	return term != "dumb"
 }
+
+func SupportsEscapeCodes(fd uintptr) bool {
+	return true
+}
