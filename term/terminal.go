@@ -13,6 +13,8 @@ import (
 	"unicode/utf8"
 )
 
+const asciiEscapeCode = "\x1b[0m"
+
 // print directly to the terminal
 type message struct {
 	line string
@@ -45,6 +47,7 @@ type Terminal struct {
 
 	clearCurrentLine func(io.Writer, uintptr)
 	moveCursorUp     func(io.Writer, uintptr, int)
+	asciiResetCode   string
 }
 
 func NewTerminal(w io.Writer, errWriter io.Writer, disableStatus bool) *Terminal {
@@ -61,12 +64,18 @@ func NewTerminal(w io.Writer, errWriter io.Writer, disableStatus bool) *Terminal
 	}
 
 	// if it has the fd, can update the status lines
-	// TODO: check if it's a terminal
-	if f, ok := w.(fder); ok {
+	if f, ok := w.(fder); ok && CanUpdateStatus(f.Fd()) {
 		t.updateStatus = true
 		t.fd = f.Fd()
 		t.clearCurrentLine = clearCurrentLine(w, t.fd)
 		t.moveCursorUp = moveCursorUp(w, t.fd)
+	}
+
+	// check if the terminal supports ascii escape codes
+	if t.updateStatus && SupportsEscapeCodes(t.fd) {
+		t.asciiResetCode = asciiEscapeCode
+	} else {
+		t.asciiResetCode = ""
 	}
 
 	return t
@@ -114,7 +123,7 @@ func (t *Terminal) run(ctx context.Context) {
 				dst = t.wr
 			}
 
-			if _, err := io.WriteString(dst, "\033[0m"+msg.line); err != nil {
+			if _, err := io.WriteString(dst, msg.line); err != nil {
 				fmt.Fprintf(os.Stderr, "write failed: %v\n", err)
 				continue
 			}
@@ -330,7 +339,7 @@ func (t *Terminal) SetStatus(lines []string) {
 		if width > 0 {
 			line = Truncate(line, width-2)
 		}
-		lines[i] = line + "\n"
+		lines[i] = line + t.asciiResetCode + "\n"
 	}
 
 	// make sure the last line does not have a line break
