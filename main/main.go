@@ -10,6 +10,7 @@ import (
 	"github.com/elvis972602/kemono-scraper/kemono"
 	"github.com/elvis972602/kemono-scraper/term"
 	"github.com/elvis972602/kemono-scraper/utils"
+	"github.com/mattn/go-colorable"
 	"log"
 	"net/http"
 	"net/url"
@@ -359,7 +360,7 @@ func main() {
 
 	ctx := context.Background()
 
-	terminal := term.NewTerminal(os.Stdout, os.Stderr, false)
+	terminal := term.NewTerminal(colorable.NewColorableStdout(), colorable.NewColorableStderr(), false)
 	go terminal.Run(ctx)
 
 	downloaderOptions = append(downloaderOptions, downloader.SetLog(terminal))
