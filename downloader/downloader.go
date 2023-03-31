@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/elvis972602/kemono-scraper/kemono"
@@ -91,6 +92,7 @@ func NewDownloader(options ...DownloadOption) kemono.Downloader {
 		retry:         2,
 		client: &http.Client{
 			Transport: &http.Transport{
+				TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 				MaxIdleConns:          maxConnection,
 				MaxConnsPerHost:       maxConnection,
 				MaxIdleConnsPerHost:   maxConnection,
@@ -152,7 +154,7 @@ func Timeout(timeout time.Duration) DownloadOption {
 	}
 }
 
-// limit the rate of download per second
+// RateLimit limit the rate of download per second
 func RateLimit(n int) DownloadOption {
 	return func(d *downloader) {
 		d.reteLimiter = utils.NewRateLimiter(n)
@@ -162,6 +164,12 @@ func RateLimit(n int) DownloadOption {
 func WithHeader(header Header) DownloadOption {
 	return func(d *downloader) {
 		d.Header = header
+	}
+}
+
+func WithProxy(proxy string) DownloadOption {
+	return func(d *downloader) {
+		addProxy(proxy, d.client.Transport.(*http.Transport))
 	}
 }
 
@@ -212,6 +220,16 @@ func RetryInterval(interval time.Duration) DownloadOption {
 	return func(d *downloader) {
 		d.retryInterval = interval
 	}
+}
+
+func (d *downloader) Get(url string) (resp *http.Response, err error) {
+	var (
+		req *http.Request
+	)
+	if req, err = newGetRequest(context.Background(), d.Header, url); err != nil {
+		return
+	}
+	return d.client.Do(req)
 }
 
 func (d *downloader) Download(files <-chan kemono.FileWithIndex, creator kemono.Creator, post kemono.Post) <-chan error {
@@ -424,6 +442,18 @@ func checkFileExitAndComplete(filePath, fileHash string) (complete bool, err err
 
 func newGetRequest(ctx context.Context, header Header, url string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	// set headers
+	for k, v := range header {
+		req.Header.Set(k, v)
+	}
+	return req, nil
+}
+
+func newConnectRequest(ctx context.Context, header Header, url string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, "CONNECT", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

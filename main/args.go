@@ -71,6 +71,8 @@ var (
 	maxDownloadParallel int
 	// request per second
 	rateLimit int
+	// proxy url
+	proxy string
 
 	// download favorite creator
 	favoriteCreator bool
@@ -124,6 +126,7 @@ func init() {
 	flag.Float64Var(&retryInterval, "retry-interval", 10, "download retry interval(second), default is 10s")
 	flag.IntVar(&maxDownloadParallel, "max-download-parallel", 3, "max download file concurrent, default is 3, async mode only")
 	flag.IntVar(&rateLimit, "rate-limit", 2, "request per second, default is 2")
+	flag.StringVar(&proxy, "proxy", "", "proxy url, e.g. http://proxy.com:8080")
 
 	_, err := os.Stat("config.yaml")
 	if os.IsNotExist(err) {

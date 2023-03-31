@@ -354,9 +354,10 @@ func main() {
 	} else {
 		downloaderOptions = append(downloaderOptions, downloader.RateLimit(rateLimit))
 	}
-	//if proxy != "" {
-	//	downloaderOptions = append(downloaderOptions, downloader.Proxy(proxy))
-	//}
+
+	if proxy != "" {
+		downloaderOptions = append(downloaderOptions, downloader.WithProxy(proxy))
+	}
 
 	ctx := context.Background()
 
@@ -587,9 +588,9 @@ func setFlag() {
 	if !isFlagPassed("rate-limit") && config["rate-limit"] != nil {
 		rateLimit = config["rate-limit"].(int)
 	}
-	//if !isFlagPassed("proxy") && config["proxy"] != nil {
-	//	proxy = config["proxy"].(string)
-	//}
+	if !isFlagPassed("proxy") && config["proxy"] != nil {
+		proxy = config["proxy"].(string)
+	}
 	if !isFlagPassed("fav-creator") && config["fav-creator"] != nil {
 		favoriteCreator = config["fav-creator"].(bool)
 	}
