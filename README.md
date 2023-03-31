@@ -96,7 +96,9 @@ retry times, default 3
 `--retry-interval number`  
 retry interval in seconds, default 10. The number can be specified as either an int or float type  
 `--rate-limit int`  
-rate limit in request/s, default 2
+rate limit in request/s, default 2  
+`--proxy string`  
+proxy url, default is empty, support socks5, http, https (e.g. socks5://proxy:1080)
 
 ## Config File
 config file is in `./config.yaml`  
@@ -107,7 +109,10 @@ Example:
 banner: true
 async: true
 max-download-parallel: 5
-with-prefix-number: true
+output: ./downloads
+template: <ks:creator>/<ks:post>/<ks:index>-<ks:filename><ks:extension>
+retry: 10
+retry-interval: 15
 ```
 
 ## Features
