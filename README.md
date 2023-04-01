@@ -113,6 +113,7 @@ output: ./downloads
 template: <ks:creator>/<ks:post>/<ks:index>-<ks:filename><ks:extension>
 retry: 10
 retry-interval: 15
+# proxy: socks5://proxy:1080
 ```
 
 ## Features
