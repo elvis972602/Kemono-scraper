@@ -48,6 +48,7 @@ func init() {
 
 func main() {
 	flag.Parse()
+	setPassedFlags()
 
 	if help {
 		PrintDefaults()
@@ -354,9 +355,10 @@ func main() {
 	} else {
 		downloaderOptions = append(downloaderOptions, downloader.RateLimit(rateLimit))
 	}
-	//if proxy != "" {
-	//	downloaderOptions = append(downloaderOptions, downloader.Proxy(proxy))
-	//}
+
+	if proxy != "" {
+		downloaderOptions = append(downloaderOptions, downloader.WithProxy(proxy))
+	}
 
 	ctx := context.Background()
 
@@ -499,80 +501,80 @@ func parasData(data string) time.Time {
 }
 
 func setFlag() {
-	if !isFlagPassed("link") && config["link"] != nil {
+	if !passedFlags["link"] && config["link"] != nil {
 		link = config["link"].(string)
 	}
-	if !isFlagPassed("fav-site") && config["fav-site"] != nil {
+	if !passedFlags["fav-site"] && config["fav-site"] != nil {
 		site = config["fav-site"].(string)
 	}
-	if !isFlagPassed("creator") && config["creator"] != nil {
+	if !passedFlags["creator"] && config["creator"] != nil {
 		creator = config["creator"].(string)
 	}
-	if !isFlagPassed("banner") && config["banner"] != nil {
+	if !passedFlags["banner"] && config["banner"] != nil {
 		banner = config["banner"].(bool)
 	}
-	if !isFlagPassed("overwrite") && config["overwrite"] != nil {
+	if !passedFlags["overwrite"] && config["overwrite"] != nil {
 		overwrite = config["overwrite"].(bool)
 	}
-	if !isFlagPassed("first") && config["first"] != nil {
+	if !passedFlags["first"] && config["first"] != nil {
 		first = config["first"].(int)
 	}
-	if !isFlagPassed("last") && config["last"] != nil {
+	if !passedFlags["last"] && config["last"] != nil {
 		last = config["last"].(int)
 	}
-	if !isFlagPassed("date") && config["date"] != nil {
+	if !passedFlags["date"] && config["date"] != nil {
 		date = config["date"].(int)
 	}
-	if !isFlagPassed("date-before") && config["date-before"] != nil {
+	if !passedFlags["date-before"] && config["date-before"] != nil {
 		date = config["date-before"].(int)
 	}
-	if !isFlagPassed("date-after") && config["date-after"] != nil {
+	if !passedFlags["date-after"] && config["date-after"] != nil {
 		date = config["date-after"].(int)
 	}
-	if !isFlagPassed("update") && config["update"] != nil {
+	if !passedFlags["update"] && config["update"] != nil {
 		update = config["update"].(int)
 	}
-	if !isFlagPassed("update-before") && config["update-before"] != nil {
+	if !passedFlags["update-before"] && config["update-before"] != nil {
 		update = config["update-before"].(int)
 	}
-	if !isFlagPassed("update-after") && config["update-after"] != nil {
+	if !passedFlags["update-after"] && config["update-after"] != nil {
 		update = config["update-after"].(int)
 	}
-	if !isFlagPassed("extension-only") && config["extension-only"] != nil {
+	if !passedFlags["extension-only"] && config["extension-only"] != nil {
 		extensionOnly = config["extension-only"].(string)
 	}
-	if !isFlagPassed("extension-exclude") && config["extension-exclude"] != nil {
+	if !passedFlags["extension-exclude"] && config["extension-exclude"] != nil {
 		extensionExclude = config["extension-exclude"].(string)
 	}
-	if !isFlagPassed("output") && config["output"] != nil {
+	if !passedFlags["output"] && config["output"] != nil {
 		output = config["output"].(string)
 	}
-	if !isFlagPassed("template") && config["template"] != nil {
+	if !passedFlags["template"] && config["template"] != nil {
 		template = config["template"].(string)
 	}
-	if !isFlagPassed("async") && config["async"] != nil {
+	if !passedFlags["async"] && config["async"] != nil {
 		async = config["async"].(bool)
 	}
-	if !isFlagPassed("max-size") && config["max-size"] != nil {
+	if !passedFlags["max-size"] && config["max-size"] != nil {
 		maxSize = config["max-size"].(string)
 	}
-	if !isFlagPassed("min-size") && config["min-size"] != nil {
+	if !passedFlags["min-size"] && config["min-size"] != nil {
 		minSize = config["min-size"].(string)
 	}
-	if !isFlagPassed("with-prefix-number") && config["with-prefix-number"] != nil {
+	if !passedFlags["with-prefix-number"] && config["with-prefix-number"] != nil {
 		withPrefixNumber = config["with-prefix-number"].(bool)
 	}
-	if !isFlagPassed("name-rule-only-index") && config["name-rule-only-index"] != nil {
+	if !passedFlags["name-rule-only-index"] && config["name-rule-only-index"] != nil {
 		nameRuleOnlyIndex = config["name-rule-only-index"].(bool)
 	}
-	if !isFlagPassed("download-timeout") && config["download-timeout"] != nil {
+	if !passedFlags["download-timeout"] && config["download-timeout"] != nil {
 		downloadTimeout = config["download-timeout"].(int)
 	}
 
-	if !isFlagPassed("retry") && config["retry"] != nil {
+	if !passedFlags["retry"] && config["retry"] != nil {
 		retry = config["retry"].(int)
 	}
-	if !isFlagPassed("retry-interval") && config["retry-interval"] != nil {
+	if !passedFlags["retry-interval"] && config["retry-interval"] != nil {
 		// check if retry-interval is float64 or int
 		_, ok := config["retry-interval"].(float64)
 		if !ok {
@@ -581,25 +583,25 @@ func setFlag() {
 			retryInterval = config["retry-interval"].(float64)
 		}
 	}
-	if !isFlagPassed("max-download-parallel") && config["max-download-parallel"] != nil {
+	if !passedFlags["max-download-parallel"] && config["max-download-parallel"] != nil {
 		maxDownloadParallel = config["max-download-parallel"].(int)
 	}
-	if !isFlagPassed("rate-limit") && config["rate-limit"] != nil {
+	if !passedFlags["rate-limit"] && config["rate-limit"] != nil {
 		rateLimit = config["rate-limit"].(int)
 	}
-	//if !isFlagPassed("proxy") && config["proxy"] != nil {
-	//	proxy = config["proxy"].(string)
-	//}
-	if !isFlagPassed("fav-creator") && config["fav-creator"] != nil {
+	if !passedFlags["proxy"] && config["proxy"] != nil {
+		proxy = config["proxy"].(string)
+	}
+	if !passedFlags["fav-creator"] && config["fav-creator"] != nil {
 		favoriteCreator = config["fav-creator"].(bool)
 	}
-	if !isFlagPassed("fav-post") && config["fav-post"] != nil {
+	if !passedFlags["fav-post"] && config["fav-post"] != nil {
 		favoritePost = config["fav-post"].(bool)
 	}
-	if !isFlagPassed("cookie-browser") && config["cookie-browser"] != nil {
+	if !passedFlags["cookie-browser"] && config["cookie-browser"] != nil {
 		cookieBrowser = config["cookie-browser"].(string)
 	}
-	if !isFlagPassed("cookie") && config["cookie"] != nil {
+	if !passedFlags["cookie"] && config["cookie"] != nil {
 		cookieFile = config["cookie"].(string)
 	}
 

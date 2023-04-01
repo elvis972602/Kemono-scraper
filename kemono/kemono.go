@@ -3,6 +3,7 @@ package kemono
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -10,6 +11,7 @@ import (
 
 type Downloader interface {
 	Download(<-chan FileWithIndex, Creator, Post) <-chan error
+	Get(url string) (resp *http.Response, err error)
 }
 
 type Log interface {

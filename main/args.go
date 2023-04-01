@@ -71,6 +71,8 @@ var (
 	maxDownloadParallel int
 	// request per second
 	rateLimit int
+	// proxy url
+	proxy string
 
 	// download favorite creator
 	favoriteCreator bool
@@ -82,9 +84,14 @@ var (
 	cookieFile string
 )
 
-var config map[string]interface{}
+var (
+	config      map[string]interface{}
+	passedFlags = make(map[string]bool)
+)
 
 func init() {
+	log.SetOutput(colorable.NewColorableStdout())
+
 	flag.BoolVar(&help, "help", false, "show all usage")
 	flag.StringVar(&link, "link", "", "download link, should be same site, separate by comma")
 	// if already have link, or creator, site will be ignored
@@ -124,8 +131,9 @@ func init() {
 	flag.Float64Var(&retryInterval, "retry-interval", 10, "download retry interval(second), default is 10s")
 	flag.IntVar(&maxDownloadParallel, "max-download-parallel", 3, "max download file concurrent, default is 3, async mode only")
 	flag.IntVar(&rateLimit, "rate-limit", 2, "request per second, default is 2")
-
+	flag.StringVar(&proxy, "proxy", "", "proxy url, e.g. http://proxy.com:8080")
 	_, err := os.Stat("config.yaml")
+
 	if os.IsNotExist(err) {
 		// file does not exist
 		return
@@ -147,18 +155,12 @@ func init() {
 	if err != nil {
 		log.Fatalf("unmarshal config file error: %v", err)
 	}
-
-	log.SetOutput(colorable.NewColorableStdout())
 }
 
-func isFlagPassed(name string) bool {
-	found := false
+func setPassedFlags() {
 	flag.Visit(func(f *flag.Flag) {
-		if f.Name == name {
-			found = true
-		}
+		passedFlags[f.Name] = true
 	})
-	return found
 }
 
 // PrintDefaults same as flag.PrintDefaults(), but only print the flag with two hyphens and without default value

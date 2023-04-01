@@ -1,9 +1,11 @@
 package kemono
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"github.com/elvis972602/kemono-scraper/utils"
+	"io"
 	"io/ioutil"
 	"net/http"
 )
@@ -12,18 +14,20 @@ import (
 func (k *Kemono) FetchCreators() (creators []Creator, err error) {
 	k.log.Print("fetching creator list...")
 	url := fmt.Sprintf("https://%s.party/api/creators", k.Site)
-	req, err := http.NewRequest("GET", url, nil)
-	req.Header.Set("Host", fmt.Sprintf("%s.party", k.Site))
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("fetch creator list error: %s", err)
-	}
-	defer resp.Body.Close()
-	data, err := ioutil.ReadAll(resp.Body)
+	resp, err := k.Downloader.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("fetch creator list error: %s", err)
 	}
 
+	reader, err := handleCompressedHTTPResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("fetch creator list error: %s", err)
+	}
 	if k.Site == "kemono" {
 		var c []KemonoCreator
 		err = json.Unmarshal(data, &c)
@@ -49,14 +53,19 @@ func (k *Kemono) FetchPosts(service, id string) (posts []Post, err error) {
 
 	fetch := func(page int) (err error, finish bool) {
 		k.log.Printf("fetching post list page %d...", page)
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s?o=%d", url, page*50), nil)
-		req.Header.Set("Host", fmt.Sprintf("%s.party", k.Site))
-		resp, err := http.DefaultClient.Do(req)
+		purl := fmt.Sprintf("%s?o=%d", url, page*50)
+		resp, err := k.Downloader.Get(purl)
 		if err != nil {
 			return fmt.Errorf("fetch post list error: %s", err), false
 		}
-		defer resp.Body.Close()
-		data, err := ioutil.ReadAll(resp.Body)
+
+		reader, err := handleCompressedHTTPResponse(resp)
+		if err != nil {
+			return err, false
+		}
+		defer reader.Close()
+
+		data, err := ioutil.ReadAll(reader)
 		if err != nil {
 			return fmt.Errorf("fetch post list error: %s", err), false
 		}
@@ -113,4 +122,17 @@ func (k *Kemono) DownloadPosts(creator Creator, posts []Post) (err error) {
 		}
 	}
 	return
+}
+
+func handleCompressedHTTPResponse(resp *http.Response) (io.ReadCloser, error) {
+	switch resp.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		return reader, nil
+	default:
+		return resp.Body, nil
+	}
 }
