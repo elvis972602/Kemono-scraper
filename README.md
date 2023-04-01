@@ -19,9 +19,9 @@ syntax:
 
 you can get cookies easily by using Chrome extension [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
 #### Windows
-Windows can detect the cookie file automatically  
+Windows can detect the cookie file automatically(Not supported in no_cookies_detection version)  
 `--cookie-browser string`  
-which browser to use, default is chrome (supported: chrome, firefox, edge , opera, vivaldi)
+which browser to use, default is chrome (supported: chrome, firefox, edge , opera, vivaldi)  
 
 ### Download Option
 `--link [<urls>]`  
@@ -31,7 +31,7 @@ download creators, separate by comma
 `--banner bool`  
 download banner, default is false (kemono only)  
 `--fav-site string`  
-download favorite site (e.g. kemono, etc.), separate by comma.  
+specify the website to get favorites from (kemono or coomer), separated by comma  
 `--fav-creator bool`  
 download favorite creator, default is false  
 `--fav-post bool`  
