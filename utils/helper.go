@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,6 +39,9 @@ func Hash(w io.Reader) ([]byte, error) {
 }
 
 func ValidDirectoryName(name string) string {
+	if name == "" {
+		return ""
+	}
 	if runtime.GOOS == "windows" {
 		invalidRune := "\x00-\x1f/\\:*?\"<>|\n\r\t"
 		validate := func(r rune) rune {
@@ -122,4 +127,18 @@ func (r *RateLimiter) Timing() {
 
 func (r *RateLimiter) Token() {
 	r.semaphore.release()
+}
+
+func GenerateToken(size int) (string, error) {
+	data := make([]byte, size)
+	_, err := rand.Read(data)
+	if err != nil {
+		return "", err
+	}
+
+	// Convert to hexadecimal
+	hexStr := hex.EncodeToString(data)
+
+	return hexStr, nil
+
 }
