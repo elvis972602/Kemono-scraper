@@ -67,6 +67,8 @@ type downloader struct {
 
 	Header Header
 
+	cookies []*http.Cookie
+
 	retry int
 
 	retryInterval time.Duration
@@ -167,6 +169,12 @@ func WithHeader(header Header) DownloadOption {
 	}
 }
 
+func WithCookie(cookies []*http.Cookie) DownloadOption {
+	return func(d *downloader) {
+		d.cookies = cookies
+	}
+}
+
 func WithProxy(proxy string) DownloadOption {
 	return func(d *downloader) {
 		addProxy(proxy, d.client.Transport.(*http.Transport))
@@ -226,7 +234,7 @@ func (d *downloader) Get(url string) (resp *http.Response, err error) {
 	var (
 		req *http.Request
 	)
-	if req, err = newGetRequest(context.Background(), d.Header, url); err != nil {
+	if req, err = newGetRequest(context.Background(), d.Header, d.cookies, url); err != nil {
 		return
 	}
 	return d.client.Do(req)
@@ -319,7 +327,7 @@ func (d *downloader) downloadFile(filePath, url string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), d.Timeout)
 	defer cancel()
 
-	req, err := newGetRequest(ctx, d.Header, url)
+	req, err := newGetRequest(ctx, d.Header, d.cookies, url)
 	if err != nil {
 		return fmt.Errorf("new request error: %w", err)
 	}
@@ -440,7 +448,7 @@ func checkFileExitAndComplete(filePath, fileHash string) (complete bool, err err
 	return false, nil
 }
 
-func newGetRequest(ctx context.Context, header Header, url string) (*http.Request, error) {
+func newGetRequest(ctx context.Context, header Header, cookies []*http.Cookie, url string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -449,17 +457,9 @@ func newGetRequest(ctx context.Context, header Header, url string) (*http.Reques
 	for k, v := range header {
 		req.Header.Set(k, v)
 	}
-	return req, nil
-}
-
-func newConnectRequest(ctx context.Context, header Header, url string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, "CONNECT", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	// set headers
-	for k, v := range header {
-		req.Header.Set(k, v)
+	// set cookies
+	for _, c := range cookies {
+		req.AddCookie(c)
 	}
 	return req, nil
 }

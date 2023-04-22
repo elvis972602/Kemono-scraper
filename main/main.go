@@ -382,6 +382,19 @@ func main() {
 		options[Kemono] = append(options[Kemono], sharedOptions...)
 		options[Kemono] = append(options[Kemono], kemono.WithDomain("kemono"))
 		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://kemono.party"))
+		token, err := utils.GenerateToken(16)
+		if err != nil {
+			log.Fatalf("generate token failed: %s", err)
+		}
+		downloaderOptions = append(downloaderOptions, downloader.WithCookie([]*http.Cookie{
+			{
+				Name:   "__ddg2",
+				Value:  token,
+				Path:   "/",
+				Domain: ".kemono.party",
+				Secure: false,
+			},
+		}))
 		downloaderOptions = append(downloaderOptions, downloader.WithHeader(downloader.Header{
 			"Host":                      "kemono.party",
 			"User-Agent":                downloader.UserAgent,
@@ -407,6 +420,18 @@ func main() {
 		options[Coomer] = append(options[Coomer], sharedOptions...)
 		options[Coomer] = append(options[Coomer], kemono.WithDomain("coomer"))
 		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://coomer.party"))
+		token, err := utils.GenerateToken(16)
+		if err != nil {
+			log.Fatalf("generate token failed: %s", err)
+		}
+		downloaderOptions = append(downloaderOptions, downloader.WithCookie([]*http.Cookie{
+			{
+				Name:   "__ddg2",
+				Value:  token,
+				Path:   "/",
+				Domain: ".coomer.party",
+			},
+		}))
 		downloaderOptions = append(downloaderOptions, downloader.WithHeader(downloader.Header{
 			"Host":                      "coomer.party",
 			"User-Agent":                downloader.UserAgent,
