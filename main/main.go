@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	tmpl "text/template"
@@ -470,24 +471,21 @@ func main() {
 }
 
 func parasLink(link string) (s, service, userId, postId string) {
-	var ext string
-
 	u, err := url.Parse(link)
 	if err != nil {
 		log.Fatal("invalid url")
 	}
 
-	hostComponents := strings.Split(u.Host, ".")
-	if len(hostComponents) != 2 {
-		log.Fatal("Error splitting host component:", u.Host)
-		return
+	pattern := `(?i)^(?:.*\.)?(kemono|coomer)\.party$`
+	re := regexp.MustCompile(pattern)
+
+	matchedSubstrings := re.FindStringSubmatch(u.Host)
+
+	if matchedSubstrings == nil {
+		log.Fatal("invalid host:", u.Host)
 	}
 
-	s = hostComponents[0]
-	ext = hostComponents[1]
-	if ext != "party" {
-		log.Fatal("invalid url")
-	}
+	s = matchedSubstrings[1]
 
 	pathComponents := strings.Split(u.Path, "/")
 	if len(pathComponents) != 6 && len(pathComponents) != 4 {
