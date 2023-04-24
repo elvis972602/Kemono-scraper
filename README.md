@@ -1,9 +1,6 @@
 # Kemono-scraper
 A simple downloader to  download images from kemono.party
 
-## Note about DDoS-Guard Issue
-The version before v0.0.4 will be blocked by DDoS-Guard, please upgrade to the latest release.
-
 ## Flag Option
 
 ### Cookie File
