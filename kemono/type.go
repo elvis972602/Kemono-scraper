@@ -200,4 +200,5 @@ var SiteMap = map[string]string{
 	"boosty":        "kemono",
 	"afdian":        "kemono",
 	"onlyfans":      "coomer",
+	"fansly":        "coomer",
 }
