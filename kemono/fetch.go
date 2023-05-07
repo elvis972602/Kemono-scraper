@@ -50,10 +50,14 @@ func (k *Kemono) FetchCreators() (creators []Creator, err error) {
 // FetchPosts fetch post list
 func (k *Kemono) FetchPosts(service, id string) (posts []Post, err error) {
 	url := fmt.Sprintf("https://%s.party/api/%s/user/%s", k.Site, service, id)
+	perUnit := 50
+	if k.Site == "coomer" {
+		perUnit = 25
+	}
 
 	fetch := func(page int) (err error, finish bool) {
 		k.log.Printf("fetching post list page %d...", page)
-		purl := fmt.Sprintf("%s?o=%d", url, page*50)
+		purl := fmt.Sprintf("%s?o=%d", url, page*perUnit)
 		resp, err := k.Downloader.Get(purl)
 		if err != nil {
 			return fmt.Errorf("fetch post list error: %s", err), false
