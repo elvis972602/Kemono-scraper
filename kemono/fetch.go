@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 // FetchCreators fetch Creator list
@@ -58,34 +59,52 @@ func (k *Kemono) FetchPosts(service, id string) (posts []Post, err error) {
 	fetch := func(page int) (err error, finish bool) {
 		k.log.Printf("fetching post list page %d...", page)
 		purl := fmt.Sprintf("%s?o=%d", url, page*perUnit)
-		resp, err := k.Downloader.Get(purl)
-		if err != nil {
-			return fmt.Errorf("fetch post list error: %s", err), false
+
+		retryCount := 0
+		for retryCount < 3 {
+			resp, err := k.Downloader.Get(purl)
+			if err != nil {
+				k.log.Printf("fetch post list error: %v", err)
+				// Sleep for 5 seconds before retrying
+				time.Sleep(5 * time.Second)
+				retryCount++
+				continue
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				k.log.Printf("fetch post list error: %s", resp.Status)
+				time.Sleep(5 * time.Second)
+				retryCount++
+				continue
+			}
+
+			reader, err := handleCompressedHTTPResponse(resp)
+			if err != nil {
+				return err, false
+			}
+
+			data, err := ioutil.ReadAll(reader)
+			if err != nil {
+				return fmt.Errorf("fetch post list error: %s", err), false
+			}
+			reader.Close()
+
+			var pr []PostRaw
+			err = json.Unmarshal(data, &pr)
+			if err != nil {
+				return fmt.Errorf("unmarshal post list error: %s", err), false
+			}
+			if len(pr) == 0 {
+				// final page
+				return nil, true
+			}
+			for _, p := range pr {
+				posts = append(posts, p.ParasTime())
+			}
+			return nil, false
 		}
 
-		reader, err := handleCompressedHTTPResponse(resp)
-		if err != nil {
-			return err, false
-		}
-		defer reader.Close()
-
-		data, err := ioutil.ReadAll(reader)
-		if err != nil {
-			return fmt.Errorf("fetch post list error: %s", err), false
-		}
-		var pr []PostRaw
-		err = json.Unmarshal(data, &pr)
-		if err != nil {
-			return fmt.Errorf("unmarshal post list error: %s", err), false
-		}
-		if len(pr) == 0 {
-			// final page
-			return nil, true
-		}
-		for _, p := range pr {
-			posts = append(posts, p.ParasTime())
-		}
-		return
+		return fmt.Errorf("fetch post list error: maximum retry count exceeded"), false
 	}
 
 	for i := 0; ; i++ {
