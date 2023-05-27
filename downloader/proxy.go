@@ -19,7 +19,7 @@ func parseProxyUrl(proxyUrlStr string) (proxyType, proxyAddr string) {
 	return
 }
 
-func addProxy(proxyUrlStr string, transport *http.Transport) {
+func AddProxy(proxyUrlStr string, transport *http.Transport) {
 	proxyType, _ := parseProxyUrl(proxyUrlStr)
 	proxyUrl, err := url.Parse(proxyUrlStr)
 	if err != nil {

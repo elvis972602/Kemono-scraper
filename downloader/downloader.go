@@ -177,7 +177,7 @@ func WithCookie(cookies []*http.Cookie) DownloadOption {
 
 func WithProxy(proxy string) DownloadOption {
 	return func(d *downloader) {
-		addProxy(proxy, d.client.Transport.(*http.Transport))
+		AddProxy(proxy, d.client.Transport.(*http.Transport))
 	}
 }
 

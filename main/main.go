@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -635,6 +636,19 @@ func DirectoryName(p kemono.Post) string {
 }
 
 func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCreator {
+	log.Printf("fetching favorite creators from %s.party", s)
+	var client *http.Client
+	client = http.DefaultClient
+	if proxy != "" {
+		client = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+				ResponseHeaderTimeout: 30 * time.Second,
+			},
+		}
+		downloader.AddProxy(proxy, client.Transport.(*http.Transport))
+	}
+
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.party/api/favorites?type=user", s), nil)
 	if err != nil {
 		log.Fatalf("Error creating request: %s", err)
@@ -643,7 +657,7 @@ func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCre
 	for _, v := range cookie {
 		req.AddCookie(v)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatalf("Error getting favorites: %s", err)
 	}
@@ -660,6 +674,18 @@ func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCre
 }
 
 func fetchFavoritePosts(s string, cookie []*http.Cookie) []kemono.PostRaw {
+	log.Printf("fetching favorite posts from %s.party", s)
+	var client *http.Client
+	client = http.DefaultClient
+	if proxy != "" {
+		client = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+				ResponseHeaderTimeout: 30 * time.Second,
+			},
+		}
+		downloader.AddProxy(proxy, client.Transport.(*http.Transport))
+	}
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.party/api/favorites?type=post", s), nil)
 	if err != nil {
 		log.Fatalf("Error creating request: %s", err)
@@ -668,7 +694,7 @@ func fetchFavoritePosts(s string, cookie []*http.Cookie) []kemono.PostRaw {
 	for _, v := range cookie {
 		req.AddCookie(v)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatalf("Error getting posts: %s", err)
 	}
