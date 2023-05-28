@@ -67,14 +67,25 @@ download post with size greater than min-size (e.g. 1 MB, 1KB, 1.5 gb, etc.)
 output path  
 `--template <tags>`  
 The template for customizing download paths, where you can use the following keywords to specify different parts of the path:  
+- `<ks:service>`: creator service
 - `<ks:creator>`: creator name
 - `<ks:post>`: post title  
 - `<ks:index>`: file index  
 - `<ks:filename>`: file name  
+- `<ks:filehash>`: file hash    
 - `<ks:extension>`: file extension  
 
 for example:  
-`<ks:creator>/<ks:post>/<ks:index>-<ks:filename><ks:extension>`
+`[<ks:service>] <ks:creator>/<ks:post>/<ks:index>-<ks:filename><ks:extension>`  
+
+`--image-template <tags>`  
+The template for customizing image file, `--template` should be set first  
+`--video-template <tags>`  
+The template for customizing video file, `--template` should be set first  
+`--audio-template <tags>`  
+The template for customizing audio file, `--template` should be set first  
+`--archive-template <tags>`  
+The template for customizing archive file, `--template` should be set first  
 
 `--overwrite bool`  
 overwrite existing file  
@@ -107,7 +118,10 @@ banner: true
 async: true
 max-download-parallel: 5
 output: ./downloads
-template: <ks:creator>/<ks:post>/<ks:index>-<ks:filename><ks:extension>
+template: "[<ks:service>] <ks:creator>/<ks:post>/<ks:index><ks:extension>"
+video-template: "[<ks:service>] <ks:creator>/<ks:post>/<ks:filename><ks:extension>"
+audio-template: "[<ks:service>] <ks:creator>/<ks:post>/<ks:filename><ks:extension>"
+archive-template: "[<ks:service>] <ks:creator>/<ks:post>/<ks:filename><ks:extension>"
 retry: 10
 retry-interval: 15
 # proxy: socks5://proxy:1080

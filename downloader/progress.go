@@ -210,7 +210,7 @@ func buildProgressBar(timeStr, prefix, speed, sizeStr, filename string, percent 
 	process.WriteString("%")
 	process.WriteString(" ")
 	process.WriteString(Blue)
-	process.WriteString(fmt.Sprintf("%9s", speed))
+	process.WriteString(fmt.Sprintf("%10s", speed))
 	process.WriteString("/s")
 	process.WriteString(" ")
 	process.WriteString(White)

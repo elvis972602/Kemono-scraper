@@ -241,8 +241,6 @@ func (d *downloader) Get(url string) (resp *http.Response, err error) {
 }
 
 func (d *downloader) Download(files <-chan kemono.FileWithIndex, creator kemono.Creator, post kemono.Post) <-chan error {
-
-	//TODO: implement download
 	var (
 		wg    sync.WaitGroup
 		errCh = make(chan error, len(files))
@@ -315,15 +313,10 @@ func (d *downloader) download(filePath, url, fileHash string) error {
 	return nil
 }
 
-const (
-	O_ALLOW_DELETE int = 0x00000004
-)
-
 // download the file from the url, and save to the file
 func (d *downloader) downloadFile(filePath, url string) error {
 	d.reteLimiter.Token()
 
-	//progress.Printf("downloading file %s", url)
 	ctx, cancel := context.WithTimeout(context.Background(), d.Timeout)
 	defer cancel()
 
@@ -332,9 +325,9 @@ func (d *downloader) downloadFile(filePath, url string) error {
 		return fmt.Errorf("new request error: %w", err)
 	}
 
-	var get func(retry int) error
+	var get func() error
 
-	get = func(retry int) error {
+	get = func() error {
 		bar := NewProgressBar(fmt.Sprintf("%s", filepath.Base(filePath)), 0, 30)
 		d.progress.AddBar(bar)
 		defer func() {
@@ -364,13 +357,7 @@ func (d *downloader) downloadFile(filePath, url string) error {
 		// 429 too many requests
 		if resp.StatusCode == http.StatusTooManyRequests {
 			d.progress.Failed(bar, fmt.Errorf("http 429"))
-			if retry > 0 {
-				d.log.Printf("request too many times, retry after %.1f seconds...", d.retryInterval.Seconds())
-				time.Sleep(d.retryInterval)
-				return get(retry)
-			} else {
-				return fmt.Errorf("failed to download file: %d", resp.StatusCode)
-			}
+			return fmt.Errorf("request too many times")
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -388,12 +375,13 @@ func (d *downloader) downloadFile(filePath, url string) error {
 
 		defer func() {
 			_ = tmpFile.Close()
+			_ = os.Remove(tmpFilePath)
 		}()
 
 		_, err = io.Copy(io.MultiWriter(tmpFile, bar), resp.Body)
 		if err != nil {
 			d.progress.Failed(bar, err)
-			return fmt.Errorf("failed to write file: %w", err)
+			return fmt.Errorf("io copy error: %w", err)
 		}
 
 		err = tmpFile.Close()
@@ -411,7 +399,15 @@ func (d *downloader) downloadFile(filePath, url string) error {
 		return nil
 	}
 
-	return get(d.retry)
+	for i := 0; i < d.retry; i++ {
+		err = get()
+		if err == nil {
+			return nil
+		}
+		d.log.Printf("download failed: %s, retry after %.1f seconds...", err.Error(), d.retryInterval.Seconds())
+		time.Sleep(d.retryInterval)
+	}
+	return fmt.Errorf("failed to download file: %w", err)
 
 }
 

@@ -263,6 +263,9 @@ func main() {
 	}
 
 	if template == "" {
+		if imageTemplate != "" || videoTemplate != "" || audioTemplate != "" || archiveTemplate != "" {
+			log.Printf("to use image/video/audio/archive template, you must set template first")
+		}
 		var t *tmpl.Template
 		defaultTemp, err := LoadPathTmpl(TmplDefault, output)
 		if err != nil {
@@ -283,12 +286,15 @@ func main() {
 		}
 		downloaderOptions = append(downloaderOptions, downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
 			ext := filepath.Ext(attachment.Name)
-			filename := filepath.Base(attachment.Path)[0 : len(filepath.Base(attachment.Path))-len(ext)]
+			filehash := filepath.Base(attachment.Path)[0 : len(filepath.Base(attachment.Path))-len(ext)]
+			filename := attachment.Name[0 : len(attachment.Name)-len(ext)]
 			pathConfig := &PathConfig{
+				Service:   creator.Service,
 				Creator:   utils.ValidDirectoryName(creator.Name),
 				Post:      utils.ValidDirectoryName(DirectoryName(post)),
 				Index:     i,
 				Filename:  utils.ValidDirectoryName(filename),
+				Filehash:  utils.ValidDirectoryName(filehash),
 				Extension: ext,
 			}
 			if ext == ".zip" || ext == ".rar" || ext == ".7z" {
@@ -298,22 +304,23 @@ func main() {
 			}
 		}))
 	} else {
-		t, err := LoadPathTmpl(template, output)
-		if err != nil {
-			log.Fatalf("load template failed: %s", err)
-		}
+		tmplCache := NewTmplCache()
+		tmplCache.init()
 
 		downloaderOptions = append(downloaderOptions, downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
 			ext := filepath.Ext(attachment.Path)
-			filename := filepath.Base(attachment.Path)[0 : len(filepath.Base(attachment.Path))-len(ext)]
+			filehash := filepath.Base(attachment.Path)[0 : len(filepath.Base(attachment.Path))-len(ext)]
+			filename := attachment.Name[0 : len(attachment.Name)-len(ext)]
 			pathConfig := &PathConfig{
+				Service:   creator.Service,
 				Creator:   utils.ValidDirectoryName(creator.Name),
 				Post:      utils.ValidDirectoryName(DirectoryName(post)),
 				Index:     i,
 				Filename:  utils.ValidDirectoryName(filename),
+				Filehash:  utils.ValidDirectoryName(filehash),
 				Extension: ext,
 			}
-			return ExecutePathTmpl(t, pathConfig)
+			return tmplCache.Execute(getTyp(ext), pathConfig)
 		}))
 	}
 
@@ -575,6 +582,18 @@ func setFlag() {
 	}
 	if !passedFlags["template"] && config["template"] != nil {
 		template = config["template"].(string)
+	}
+	if !passedFlags["image-template"] && config["image-template"] != nil {
+		imageTemplate = config["image-template"].(string)
+	}
+	if !passedFlags["audio-template"] && config["audio-template"] != nil {
+		audioTemplate = config["audio-template"].(string)
+	}
+	if !passedFlags["video-template"] && config["video-template"] != nil {
+		videoTemplate = config["video-template"].(string)
+	}
+	if !passedFlags["archive-template"] && config["archive-template"] != nil {
+		archiveTemplate = config["archive-template"].(string)
 	}
 	if !passedFlags["async"] && config["async"] != nil {
 		async = config["async"].(bool)

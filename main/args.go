@@ -51,6 +51,14 @@ var (
 	output string
 	// path template
 	template string
+	// Image template
+	imageTemplate string
+	// video template
+	videoTemplate string
+	// audio template
+	audioTemplate string
+	// archive template
+	archiveTemplate string
 	// async
 	async bool
 	// max size
@@ -120,7 +128,11 @@ func init() {
 
 	// download options
 	flag.StringVar(&output, "output", "", "output directory")
-	flag.StringVar(&template, "template", "", "path template, e.g. <ks:creator>/<ks:post>/<ks:index>_<ks:filename><ks:extension>")
+	flag.StringVar(&template, "template", "", "default path template, e.g. <ks:creator>/<ks:post>/<ks:index>_<ks:filename><ks:extension>")
+	flag.StringVar(&imageTemplate, "image-template", "", "image template, e.g. <ks:creator>/<ks:post>/<ks:index><ks:extension>")
+	flag.StringVar(&videoTemplate, "video-template", "", "video template, e.g. <ks:creator>/<ks:post>/<ks:filename><ks:extension>")
+	flag.StringVar(&audioTemplate, "audio-template", "", "audio template, e.g. <ks:creator>/<ks:post>/<ks:filename><ks:extension>")
+	flag.StringVar(&archiveTemplate, "archive-template", "", "archive template, e.g. <ks:creator>/<ks:post>/<ks:filename><ks:extension>")
 	flag.BoolVar(&async, "async", false, "if download posts asynchronously, may cause the file order is not the same as the post order, can be used with --with-prefix-number, default false")
 	flag.StringVar(&maxSize, "max-size", "", "max size, e.g. 10 MB, 1 GB")
 	flag.StringVar(&minSize, "min-size", "", "min size, e.g. 10 MB, 1 GB")
