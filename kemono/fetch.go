@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"time"
 )
 
@@ -130,8 +131,8 @@ func (k *Kemono) DownloadPosts(creator Creator, posts []Post) (err error) {
 		var (
 			attachmentsChan = make(chan FileWithIndex, len(post.Attachments))
 		)
-		for i, a := range post.Attachments {
-			attachmentsChan <- a.Index(i)
+		for _, a := range AddIndexToAttachments(post.Attachments) {
+			attachmentsChan <- a
 		}
 		errChan := k.Downloader.Download(attachmentsChan, creator, post)
 		for i := 0; i < len(errChan); i++ {
@@ -157,5 +158,30 @@ func handleCompressedHTTPResponse(resp *http.Response) (io.ReadCloser, error) {
 		return reader, nil
 	default:
 		return resp.Body, nil
+	}
+}
+
+func AddIndexToAttachments(attachments []File) []FileWithIndex {
+	var files []FileWithIndex
+	images := 0
+	others := 0
+	for _, a := range attachments {
+		if isImage(a.Path) {
+			files = append(files, a.Index(images))
+			images++
+		} else {
+			files = append(files, a.Index(others))
+			others++
+		}
+	}
+	return files
+}
+
+func isImage(filename string) bool {
+	switch filepath.Ext(filename) {
+	case ".jpg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".svg", ".ico", ".jpeg", ".jfif":
+		return true
+	default:
+		return false
 	}
 }

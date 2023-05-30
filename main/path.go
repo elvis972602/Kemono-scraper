@@ -18,7 +18,7 @@ const (
 
 const (
 	TmplDefault          = "[" + Service + "]" + Creator + "/" + Post + "/" + Filename + Extension
-	TmplWithPrefixNumber = "[" + Service + "]" + Creator + "/" + Post + "/" + Index + "_" + Filehash + Extension
+	TmplWithPrefixNumber = "[" + Service + "]" + Creator + "/" + Post + "/" + Index + "_" + Filename + Extension
 	TmplIndexNumber      = "[" + Service + "]" + Creator + "/" + Post + "/" + Index + Extension
 )
 
@@ -33,11 +33,6 @@ type PathConfig struct {
 }
 
 func LoadPathTmpl(templateStr string, output string) (*tmpl.Template, error) {
-	//data, err := ioutil.ReadFile(configPath)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//templateStr := string(data)
 	templateStr = filepath.Join(output, templateStr)
 	templateStr = strings.ReplaceAll(templateStr, Service, "{{.Service}}")
 	templateStr = strings.ReplaceAll(templateStr, Creator, "{{.Creator}}")
