@@ -87,6 +87,8 @@ The template for customizing audio file, `--template` should be set first
 `--archive-template <tags>`  
 The template for customizing archive file, `--template` should be set first  
 
+`--content bool`  
+download content, default is false  
 `--overwrite bool`  
 overwrite existing file  
 `--async bool`  
