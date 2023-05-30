@@ -118,10 +118,9 @@ banner: true
 async: true
 max-download-parallel: 5
 output: ./downloads
-template: "[<ks:service>] <ks:creator>/<ks:post>/<ks:index><ks:extension>"
-video-template: "[<ks:service>] <ks:creator>/<ks:post>/<ks:filename><ks:extension>"
-audio-template: "[<ks:service>] <ks:creator>/<ks:post>/<ks:filename><ks:extension>"
-archive-template: "[<ks:service>] <ks:creator>/<ks:post>/<ks:filename><ks:extension>"
+template: "[<ks:service>] <ks:creator>/<ks:post>/<ks:filename><ks:extension>"
+image-template: "[<ks:service>] <ks:creator>/<ks:post>/<ks:index><ks:extension>"
+video-template: "[<ks:service>] <ks:creator>/<ks:post>/video/<ks:filename><ks:extension>"
 retry: 10
 retry-interval: 15
 # proxy: socks5://proxy:1080
