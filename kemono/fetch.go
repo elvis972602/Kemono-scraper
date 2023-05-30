@@ -144,6 +144,12 @@ func (k *Kemono) DownloadPosts(creator Creator, posts []Post) (err error) {
 				break
 			}
 		}
+		if post.Content != "" {
+			err = k.Downloader.WriteContent(creator, post, post.Content)
+			if err != nil {
+				k.log.Printf("write content error: %s", err)
+			}
+		}
 	}
 	return
 }

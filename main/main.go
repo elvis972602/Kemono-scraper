@@ -324,6 +324,8 @@ func main() {
 		}))
 	}
 
+	downloaderOptions = append(downloaderOptions, downloader.WithContent(content))
+
 	if maxSize != "" {
 		size := utils.ParseSize(maxSize)
 		downloaderOptions = append(downloaderOptions, downloader.MaxSize(size))
@@ -594,6 +596,9 @@ func setFlag() {
 	}
 	if !passedFlags["archive-template"] && config["archive-template"] != nil {
 		archiveTemplate = config["archive-template"].(string)
+	}
+	if !passedFlags["contrnt"] && config["content"] != nil {
+		content = config["content"].(bool)
 	}
 	if !passedFlags["async"] && config["async"] != nil {
 		async = config["async"].(bool)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/elvis972602/kemono-scraper/kemono"
 	"github.com/elvis972602/kemono-scraper/utils"
+	"html/template"
 	"io"
 	"net/http"
 	"os"
@@ -72,6 +73,8 @@ type downloader struct {
 	retry int
 
 	retryInterval time.Duration
+
+	content bool
 
 	progress *Progress
 
@@ -230,6 +233,12 @@ func RetryInterval(interval time.Duration) DownloadOption {
 	}
 }
 
+func WithContent(content bool) DownloadOption {
+	return func(d *downloader) {
+		d.content = content
+	}
+}
+
 func (d *downloader) Get(url string) (resp *http.Response, err error) {
 	var (
 		req *http.Request
@@ -238,6 +247,39 @@ func (d *downloader) Get(url string) (resp *http.Response, err error) {
 		return
 	}
 	return d.client.Do(req)
+}
+
+func (d *downloader) WriteContent(creator kemono.Creator, post kemono.Post, content string) error {
+	if !d.content {
+		return nil
+	}
+	path := d.SavePath(creator, post, 0, kemono.File{Path: "content.html", Name: "content.html"})
+	path = filepath.Join(filepath.Dir(path), "content.html")
+	err := os.MkdirAll(filepath.Dir(path), 0755)
+	if err != nil {
+		return err
+	}
+	file, err := os.Create(path)
+	contentTemplate := `<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ .Title }}</title>
+</head>
+<body>
+    {{ .Content }}
+</body>
+</html>`
+	tmpl, err := template.New("content").Parse(contentTemplate)
+	if err != nil {
+		return err
+	}
+	return tmpl.Execute(file, struct {
+		Title   string
+		Content template.HTML
+	}{
+		Title:   post.Title,
+		Content: template.HTML(content),
+	})
 }
 
 func (d *downloader) Download(files <-chan kemono.FileWithIndex, creator kemono.Creator, post kemono.Post) <-chan error {

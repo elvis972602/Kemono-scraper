@@ -12,6 +12,7 @@ import (
 type Downloader interface {
 	Download(<-chan FileWithIndex, Creator, Post) <-chan error
 	Get(url string) (resp *http.Response, err error)
+	WriteContent(Creator, Post, string) error
 }
 
 type Log interface {
