@@ -1,6 +1,7 @@
 package kemono
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/elvis972602/kemono-scraper/utils"
 	"net/url"
@@ -8,53 +9,28 @@ import (
 	"time"
 )
 
+type Timestamp struct {
+	Time time.Time
+}
+
+func (t *Timestamp) UnmarshalJSON(b []byte) error {
+	var timestamp float64
+	err := json.Unmarshal(b, &timestamp)
+	if err != nil {
+		return err
+	}
+
+	t.Time = time.Unix(int64(timestamp), int64((timestamp-float64(int64(timestamp)))*1e9))
+	return nil
+}
+
 type Creator struct {
 	Favorited int       `json:"favorited"`
 	Id        string    `json:"id"`
-	Indexed   time.Time `json:"indexed"`
+	Indexed   Timestamp `json:"indexed"`
 	Name      string    `json:"name"`
 	Service   string    `json:"service"`
-	Updated   time.Time `json:"updated"`
-}
-
-type KemonoCreator struct {
-	Favorited int     `json:"favorited"`
-	Id        string  `json:"id"`
-	Indexed   float64 `json:"indexed"`
-	Name      string  `json:"name"`
-	Service   string  `json:"service"`
-	Updated   float64 `json:"updated"`
-}
-
-func (k KemonoCreator) ToCreator() Creator {
-	return Creator{
-		Favorited: k.Favorited,
-		Id:        k.Id,
-		Indexed:   time.Unix(int64(k.Indexed), 0),
-		Name:      k.Name,
-		Service:   k.Service,
-		Updated:   time.Unix(int64(k.Updated), 0),
-	}
-}
-
-type CoomerCreator struct {
-	Favorited int    `json:"favorited"`
-	Id        string `json:"id"`
-	Indexed   string `json:"indexed"`
-	Name      string `json:"name"`
-	Service   string `json:"service"`
-	Updated   string `json:"updated"`
-}
-
-func (k CoomerCreator) ToCreator() Creator {
-	c := Creator{}
-	c.Favorited = k.Favorited
-	c.Id = k.Id
-	c.Indexed, _ = time.Parse(time.RFC1123, k.Indexed)
-	c.Name = k.Name
-	c.Service = k.Service
-	c.Updated, _ = time.Parse(time.RFC1123, k.Updated)
-	return c
+	Updated   Timestamp `json:"updated"`
 }
 
 // GetID get creator id

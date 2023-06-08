@@ -30,19 +30,7 @@ func (k *Kemono) FetchCreators() (creators []Creator, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetch creator list error: %s", err)
 	}
-	if k.Site == "kemono" {
-		var c []KemonoCreator
-		err = json.Unmarshal(data, &c)
-		for _, v := range c {
-			creators = append(creators, v.ToCreator())
-		}
-	} else if k.Site == "coomer" {
-		var c []CoomerCreator
-		err = json.Unmarshal(data, &c)
-		for _, v := range c {
-			creators = append(creators, v.ToCreator())
-		}
-	}
+	err = json.Unmarshal(data, &creators)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal creator list error: %s", err)
 	}
@@ -53,10 +41,6 @@ func (k *Kemono) FetchCreators() (creators []Creator, err error) {
 func (k *Kemono) FetchPosts(service, id string) (posts []Post, err error) {
 	url := fmt.Sprintf("https://%s.party/api/%s/user/%s", k.Site, service, id)
 	perUnit := 50
-	if k.Site == "coomer" {
-		perUnit = 25
-	}
-
 	fetch := func(page int) (err error, finish bool) {
 		k.log.Printf("fetching post list page %d...", page)
 		purl := fmt.Sprintf("%s?o=%d", url, page*perUnit)
