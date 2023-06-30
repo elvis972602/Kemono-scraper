@@ -468,6 +468,7 @@ func checkFileExitAndComplete(filePath, fileHash string) (complete bool, err err
 	} else if f != nil {
 		// file exists, check if the file is complete
 		file, err = os.OpenFile(filePath, os.O_RDWR, 0644)
+		defer file.Close()
 		if err != nil {
 			err = fmt.Errorf("open file error: %w", err)
 			return
