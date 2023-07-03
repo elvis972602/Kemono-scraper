@@ -3,18 +3,23 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mattn/go-colorable"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/mattn/go-colorable"
+	"gopkg.in/yaml.v3"
 )
 
 var (
 	help bool
 	// url link
 	link string
+	// customhost
+	customhost bool
+	// customservicetype
+	customservicetype string
 	// site
 	site string
 	// creator
@@ -104,6 +109,8 @@ func init() {
 
 	flag.BoolVar(&help, "help", false, "show all usage")
 	flag.StringVar(&link, "link", "", "download link, should be same site, separate by comma")
+	flag.BoolVar(&customhost, "customhost", false, "Indicate if the supplied link is from a custom hosted instance")
+	flag.StringVar(&customservicetype, "customservicetype", "", "Define if the customhost is a kemono or coomer instance. Must be either \"kemono\" or \"coomer\"")
 	// if already have link, or creator, site will be ignored
 	flag.StringVar(&site, "fav-site", "", "download favorite creator or post, separate by comma")
 	flag.StringVar(&creator, "creator", "", "--creator <service>:<id>, separate by comma")
