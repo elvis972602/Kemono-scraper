@@ -23,6 +23,10 @@ which browser to use, default is chrome (supported: chrome, firefox, edge , oper
 ### Download Option
 `--link [<urls>]`  
 download link, separate by comma  
+`--customhost=bool`   
+Specify if the link is from a custom hosted instance   
+`--customservicetype=string`   
+Define if the customhost is a kemono or coomer instance. Must be either \"kemono\" or \"coomer\"   
 `--creator [<service>:<id>]`  
 download creators, separate by comma  
 `--banner bool`  
