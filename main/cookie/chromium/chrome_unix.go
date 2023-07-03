@@ -8,9 +8,10 @@ import (
 	"crypto/cipher"
 	"crypto/sha1"
 	"errors"
+	"log"
+
 	"github.com/elvis972602/kemono-scraper/main/cookie/utils/linux"
 	"golang.org/x/crypto/pbkdf2"
-	"log"
 )
 
 const (
@@ -46,6 +47,19 @@ func NewChromeCookieDecryptor(browserRoot, keyringName string, keyring linux.Lin
 		l.v11Key = pbkdf2Sha1(password, []byte(salt), 1, 16)
 	}
 	return l, nil
+}
+
+// byte array equal
+func bytesEqual(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func (d *ChromeCookieDecryptor) Decrypt(encrypted []byte) ([]byte, error) {

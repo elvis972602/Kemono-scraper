@@ -131,3 +131,9 @@ retry-interval: 15
 ## Features
 With Kemono-scraper, you can implement a Downloader to take advantage of features such as multi-connection downloading, resume broken downloads, and more.
 
+## Build from source
+
+ 1. Download this repository and cd into that directory
+ 2. Run `go get ./...` to install all dependencies
+ 4. cd into the main directory `cd main`
+ 5. Run `go build` to build the project
