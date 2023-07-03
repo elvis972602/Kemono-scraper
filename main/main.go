@@ -7,11 +7,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/elvis972602/kemono-scraper/downloader"
-	"github.com/elvis972602/kemono-scraper/kemono"
-	"github.com/elvis972602/kemono-scraper/term"
-	"github.com/elvis972602/kemono-scraper/utils"
-	"github.com/mattn/go-colorable"
 	"log"
 	"net/http"
 	"net/url"
@@ -22,6 +17,12 @@ import (
 	"strings"
 	tmpl "text/template"
 	"time"
+
+	"github.com/elvis972602/kemono-scraper/downloader"
+	"github.com/elvis972602/kemono-scraper/kemono"
+	"github.com/elvis972602/kemono-scraper/term"
+	"github.com/elvis972602/kemono-scraper/utils"
+	"github.com/mattn/go-colorable"
 )
 
 const (
@@ -83,10 +84,18 @@ func main() {
 	downloaderOptions = append(downloaderOptions, downloader.Async(async))
 
 	if len(links) > 0 {
+		if customhost && customservicetype == "" {
+			log.Fatalf("customservicetype argument is required when defining a custom host!")
+		}
 		hasLink = true
 		users := make(map[string][]string)
 		for _, l := range links {
-			s, srv, userId, postId = parasLink(l)
+			s, srv, userId, postId = parseLink(l, customhost)
+
+			if customhost {
+				fmt.Println("Using custom host")
+				s = customservicetype
+			}
 
 			cs := kemono.NewCreator(srv, userId)
 			users[s] = append(users[s], srv, userId)
@@ -480,35 +489,49 @@ func main() {
 
 }
 
-func parasLink(link string) (s, service, userId, postId string) {
+func parseLink(link string, customhost bool) (s, service, userId, postId string) {
 	u, err := url.Parse(link)
 	if err != nil {
-		log.Fatal("invalid url")
+		log.Fatal("Invalid URL")
 	}
 
-	pattern := `(?i)^(?:.*\.)?(kemono|coomer)\.party$`
-	re := regexp.MustCompile(pattern)
+	if !customhost {
+		pattern := `(?i)^(?:.*\.)?(kemono|coomer)\.party$`
+		re := regexp.MustCompile(pattern)
 
-	matchedSubstrings := re.FindStringSubmatch(u.Host)
+		matchedSubstrings := re.FindStringSubmatch(u.Host)
 
-	if matchedSubstrings == nil {
-		log.Fatal("invalid host:", u.Host)
+		if matchedSubstrings == nil {
+			log.Fatal("invalid host:", u.Host)
+		}
+
+		s = matchedSubstrings[1]
+	} else {
+		s = ""
 	}
-
-	s = matchedSubstrings[1]
 
 	pathComponents := strings.Split(u.Path, "/")
-	if len(pathComponents) != 6 && len(pathComponents) != 4 {
-		log.Fatal("Error splitting host component:", pathComponents, len(pathComponents))
+
+	if len(pathComponents) <= 3 {
+		log.Fatal("Invalid custom host:", pathComponents, len(pathComponents))
 		return
 	}
-	if len(pathComponents) == 6 {
+
+	// Possible url structure
+	// (subdomains)* host (subdirectory)* service user id --> Is user page
+	// (subdomains)* host (subdirectory)* service user post id --> Is post page
+
+	// Check if second to last index is post --> custom url is a post url
+	if pathComponents[len(pathComponents)-2] == "post" {
 		service = pathComponents[1]
 		userId = pathComponents[3]
 		postId = pathComponents[5]
-	} else {
+	} else if pathComponents[len(pathComponents)-2] == "user" {
 		service = pathComponents[1]
 		userId = pathComponents[3]
+	} else {
+		log.Fatal("Invalid custom host:", pathComponents, len(pathComponents))
+		return
 	}
 
 	return
