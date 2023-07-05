@@ -128,6 +128,25 @@ retry-interval: 15
 # proxy: socks5://proxy:1080
 ```
 
+## Build from source
+Cloning the repository:
+```bash
+git clone https://github.com/elvis972602/Kemono-scraper
+cd Kemono-scraper
+```
+Download all the dependencies:
+```bash
+go mod tidy
+```
+Build the project:
+```bash
+go build
+```
+- No cookies detection:
+```bash
+go build -tags=no_cookies_detection
+```
+
 ## Features
 With Kemono-scraper, you can implement a Downloader to take advantage of features such as multi-connection downloading, resume broken downloads, and more.
 
