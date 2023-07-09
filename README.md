@@ -132,7 +132,7 @@ retry-interval: 15
 Cloning the repository:
 ```bash
 git clone https://github.com/elvis972602/Kemono-scraper
-cd Kemono-scraper
+cd Kemono-scraper/main
 ```
 Download all the dependencies:
 ```bash
