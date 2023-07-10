@@ -67,6 +67,10 @@ type Kemono struct {
 	Downloader Downloader
 
 	log Log
+
+	retry int
+
+	retryInterval time.Duration
 }
 
 func NewKemono(options ...Option) *Kemono {
@@ -75,6 +79,8 @@ func NewKemono(options ...Option) *Kemono {
 		Banner:            true,
 		postFilters:       make(map[string][]PostFilter),
 		attachmentFilters: make(map[string][]AttachmentFilter),
+		retry:             3,
+		retryInterval:     5 * time.Second,
 	}
 	for _, option := range options {
 		option(k)
@@ -159,6 +165,20 @@ func SetDownloader(downloader Downloader) Option {
 func SetLog(log Log) Option {
 	return func(k *Kemono) {
 		k.log = log
+	}
+}
+
+// SetRetry set retry
+func SetRetry(retry int) Option {
+	return func(k *Kemono) {
+		k.retry = retry
+	}
+}
+
+// SetRetryInterval set retry interval
+func SetRetryInterval(retryInterval time.Duration) Option {
+	return func(k *Kemono) {
+		k.retryInterval = retryInterval
 	}
 }
 

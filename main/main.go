@@ -346,12 +346,14 @@ func main() {
 		log.Fatalf("retry must be greater than 0")
 	} else {
 		downloaderOptions = append(downloaderOptions, downloader.Retry(retry))
+		sharedOptions = append(sharedOptions, kemono.SetRetry(retry))
 	}
 
 	if retryInterval < 0 {
 		log.Fatalf("retry interval must be greater than 0")
 	} else {
 		downloaderOptions = append(downloaderOptions, downloader.RetryInterval(time.Duration(retryInterval)*time.Second))
+		sharedOptions = append(sharedOptions, kemono.SetRetryInterval(time.Duration(retryInterval)*time.Second))
 	}
 
 	// check maxDownloadGoroutine
@@ -559,19 +561,19 @@ func setFlag() {
 		date = config["date"].(int)
 	}
 	if !passedFlags["date-before"] && config["date-before"] != nil {
-		date = config["date-before"].(int)
+		dateBefore = config["date-before"].(int)
 	}
 	if !passedFlags["date-after"] && config["date-after"] != nil {
-		date = config["date-after"].(int)
+		dateAfter = config["date-after"].(int)
 	}
 	if !passedFlags["update"] && config["update"] != nil {
 		update = config["update"].(int)
 	}
 	if !passedFlags["update-before"] && config["update-before"] != nil {
-		update = config["update-before"].(int)
+		updateBefore = config["update-before"].(int)
 	}
 	if !passedFlags["update-after"] && config["update-after"] != nil {
-		update = config["update-after"].(int)
+		updateAfter = config["update-after"].(int)
 	}
 	if !passedFlags["extension-only"] && config["extension-only"] != nil {
 		extensionOnly = config["extension-only"].(string)
@@ -689,12 +691,12 @@ func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCre
 	if resp.StatusCode != 200 {
 		log.Fatalf("Error getting favorites: %d", resp.StatusCode)
 	}
-	var creators []kemono.FavoriteCreator
-	err = json.NewDecoder(resp.Body).Decode(&creators)
+	var favoriteCreators []kemono.FavoriteCreator
+	err = json.NewDecoder(resp.Body).Decode(&favoriteCreators)
 	if err != nil {
 		log.Fatalf("Error decoding favorites: %s", err)
 	}
-	return creators
+	return favoriteCreators
 }
 
 func fetchFavoritePosts(s string, cookie []*http.Cookie) []kemono.PostRaw {

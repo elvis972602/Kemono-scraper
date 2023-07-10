@@ -46,19 +46,18 @@ func (k *Kemono) FetchPosts(service, id string) (posts []Post, err error) {
 		purl := fmt.Sprintf("%s?o=%d", url, page*perUnit)
 
 		retryCount := 0
-		for retryCount < 3 {
+		for retryCount < k.retry {
 			resp, err := k.Downloader.Get(purl)
 			if err != nil {
 				k.log.Printf("fetch post list error: %v", err)
-				// Sleep for 5 seconds before retrying
-				time.Sleep(5 * time.Second)
+				time.Sleep(k.retryInterval)
 				retryCount++
 				continue
 			}
 
 			if resp.StatusCode != http.StatusOK {
 				k.log.Printf("fetch post list error: %s", resp.Status)
-				time.Sleep(5 * time.Second)
+				time.Sleep(k.retryInterval)
 				retryCount++
 				continue
 			}
