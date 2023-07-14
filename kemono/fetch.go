@@ -107,6 +107,12 @@ func (k *Kemono) FetchPosts(service, id string) (posts []Post, err error) {
 func (k *Kemono) DownloadPosts(creator Creator, posts []Post) (err error) {
 	for _, post := range posts {
 		k.log.Printf("download post: %s", utils.ValidDirectoryName(post.Title))
+		if post.Content != "" {
+			err = k.Downloader.WriteContent(creator, post, post.Content)
+			if err != nil {
+				k.log.Printf("write content error: %s", err)
+			}
+		}
 		if len(post.Attachments) == 0 {
 			// no attachment
 			continue
@@ -125,12 +131,6 @@ func (k *Kemono) DownloadPosts(creator Creator, posts []Post) (err error) {
 				// TODO: record error...
 			} else {
 				break
-			}
-		}
-		if post.Content != "" {
-			err = k.Downloader.WriteContent(creator, post, post.Content)
-			if err != nil {
-				k.log.Printf("write content error: %s", err)
 			}
 		}
 	}
