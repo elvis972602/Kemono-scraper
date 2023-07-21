@@ -125,7 +125,7 @@ func getTyp(ext string) string {
 		return "video"
 	case ".mp3", ".wav", ".flac", ".ape", ".aac", ".ogg", ".wma", ".m4a", ".aiff", ".alac":
 		return "audio"
-	case ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz":
+	case ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".zipmod":
 		return "archive"
 	default:
 		return "default"
