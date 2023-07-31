@@ -199,7 +199,11 @@ func SetLog(log Log) DownloadOption {
 
 func defaultSavePath(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
 	var name string
-	if filepath.Ext(attachment.Path) == ".zip" {
+	ext := filepath.Ext(attachment.Name)
+	if ext == "" {
+		ext = filepath.Ext(attachment.Path)
+	}
+	if ext == ".zip" {
 		name = attachment.Name
 	} else {
 		name = filepath.Base(attachment.Path)

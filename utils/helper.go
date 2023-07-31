@@ -51,8 +51,8 @@ func ValidDirectoryName(name string) string {
 			return r
 		}
 		s := strings.TrimSpace(strings.Map(validate, name))
-		if len(s) > 255 {
-			s = s[:255]
+		if len(s) > 200 {
+			s = s[:200]
 		}
 		if s[len(s)-1] == '.' {
 			s = s[:len(s)-1]
@@ -68,8 +68,8 @@ func ValidDirectoryName(name string) string {
 		return r
 	}
 	s := strings.TrimSpace(strings.Map(validate, name))
-	if len(s) > 255 {
-		s = s[:255]
+	if len(s) > 200 {
+		s = s[:200]
 	}
 	if s[0] == '.' {
 		s = s[1:]

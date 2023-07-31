@@ -155,7 +155,11 @@ func AddIndexToAttachments(attachments []File) []FileWithIndex {
 	images := 0
 	others := 0
 	for _, a := range attachments {
-		if isImage(a.Path) {
+		ext := filepath.Ext(a.Name)
+		if ext == "" {
+			ext = filepath.Ext(a.Path)
+		}
+		if isImage(ext) {
 			files = append(files, a.Index(images))
 			images++
 		} else {
@@ -166,9 +170,9 @@ func AddIndexToAttachments(attachments []File) []FileWithIndex {
 	return files
 }
 
-func isImage(filename string) bool {
-	switch filepath.Ext(filename) {
-	case ".jpg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".svg", ".ico", ".jpeg", ".jfif":
+func isImage(ext string) bool {
+	switch ext {
+	case ".jpg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".svg", ".ico", ".jpeg", ".jfif", ".jpe":
 		return true
 	default:
 		return false

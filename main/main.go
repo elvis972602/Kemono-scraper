@@ -286,6 +286,9 @@ func main() {
 		}
 		downloaderOptions = append(downloaderOptions, downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
 			ext := filepath.Ext(attachment.Name)
+			if ext == "" {
+				ext = filepath.Ext(attachment.Path)
+			}
 			filehash := filepath.Base(attachment.Path)[0 : len(filepath.Base(attachment.Path))-len(filepath.Ext(attachment.Path))]
 			filename := attachment.Name[0 : len(attachment.Name)-len(ext)]
 			pathConfig := &PathConfig{
@@ -309,6 +312,9 @@ func main() {
 
 		downloaderOptions = append(downloaderOptions, downloader.SavePath(func(creator kemono.Creator, post kemono.Post, i int, attachment kemono.File) string {
 			ext := filepath.Ext(attachment.Name)
+			if ext == "" {
+				ext = filepath.Ext(attachment.Path)
+			}
 			filehash := filepath.Base(attachment.Path)[0 : len(filepath.Base(attachment.Path))-len(filepath.Ext(attachment.Path))]
 			filename := attachment.Name[0 : len(attachment.Name)-len(ext)]
 			pathConfig := &PathConfig{

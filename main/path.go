@@ -119,7 +119,7 @@ func (t *TmplCache) Execute(typ string, config *PathConfig) string {
 
 func getTyp(ext string) string {
 	switch ext {
-	case ".jpg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".svg", ".ico", ".jpeg", ".jfif":
+	case ".jpg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".svg", ".ico", ".jpeg", ".jfif", ".jpe":
 		return "image"
 	case ".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".f4v", ".m4v", ".rmvb", ".rm", ".3gp", ".dat", ".ts", ".mts", ".vob":
 		return "video"
