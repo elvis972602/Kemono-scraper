@@ -494,7 +494,7 @@ func parasLink(link string) (s, service, userId, postId string) {
 		log.Fatal("invalid url")
 	}
 
-	pattern := `(?i)^(?:.*\.)?(kemono|coomer)\.party$`
+	pattern := `(?i)^(?:.*\.)?(kemono|coomer)\.(?:party|su)$`
 	re := regexp.MustCompile(pattern)
 
 	matchedSubstrings := re.FindStringSubmatch(u.Host)

@@ -169,12 +169,3 @@ func AddIndexToAttachments(attachments []File) []FileWithIndex {
 	}
 	return files
 }
-
-func isImage(ext string) bool {
-	switch ext {
-	case ".jpg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".svg", ".ico", ".jpeg", ".jfif", ".jpe":
-		return true
-	default:
-		return false
-	}
-}
