@@ -259,7 +259,7 @@ func (k *Kemono) Start() {
 		// filter attachments
 		for i, post := range posts {
 			// download banner if banner is true or file is not image
-			if (k.Banner && post.File.Path != "") || !isImage(filepath.Ext(post.File.Name)) {
+			if (k.Banner || !isImage(filepath.Ext(post.File.Name))) && post.File.Path != "" {
 				res := make([]File, len(post.Attachments)+1)
 				copy(res[1:], post.Attachments)
 				res[0] = post.File
