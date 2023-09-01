@@ -54,7 +54,7 @@ func ValidDirectoryName(name string) string {
 		if len(s) > 200 {
 			s = s[:200]
 		}
-		if s[len(s)-1] == '.' {
+		if len(s) > 0 && s[len(s)-1] == '.' {
 			s = s[:len(s)-1]
 			return fmt.Sprintf("%s_", s)
 		}
@@ -71,7 +71,7 @@ func ValidDirectoryName(name string) string {
 	if len(s) > 200 {
 		s = s[:200]
 	}
-	if s[0] == '.' {
+	if len(s) > 0 && s[0] == '.' {
 		s = s[1:]
 		return fmt.Sprintf("_%s", s)
 	}
