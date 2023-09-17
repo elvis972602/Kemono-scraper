@@ -13,10 +13,12 @@ import (
 
 func getCookies(s string) []*http.Cookie {
 	if cookieFile != "" {
-		f, err := os.Stat(cookieFile)
-		if err != nil && f != nil {
+		_, err := os.Stat(cookieFile)
+		if err == nil {
 			log.Printf("load cookie from %s", cookieFile)
 			return parasCookieFile(cookieFile)
+		} else {
+			log.Printf("cookie file %s not found", cookieFile)
 		}
 	}
 	if runtime.GOOS != "windows" {
