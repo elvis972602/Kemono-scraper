@@ -683,7 +683,7 @@ func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCre
 		downloader.AddProxy(proxy, client.Transport.(*http.Transport))
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.party/api/v1/favorites?type=user", s), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.party/api/v1/account/favorites?type=user", s), nil)
 	if err != nil {
 		log.Fatalf("Error creating request: %s", err)
 	}
@@ -720,7 +720,7 @@ func fetchFavoritePosts(s string, cookie []*http.Cookie) []kemono.PostRaw {
 		}
 		downloader.AddProxy(proxy, client.Transport.(*http.Transport))
 	}
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.party/api/v1/favorites?type=post", s), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.party/api/v1/account/favorites?type=post", s), nil)
 	if err != nil {
 		log.Fatalf("Error creating request: %s", err)
 	}
