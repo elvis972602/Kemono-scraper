@@ -137,7 +137,8 @@ func WithUsers(user ...Creator) Option {
 func WithUsersPair(serviceIdPairs ...string) Option {
 	return func(k *Kemono) {
 		if len(serviceIdPairs)%2 != 0 {
-			panic("serviceIdPairs must be even")
+			k.log.Printf("serviceIdPairs length must be even")
+			return
 		}
 		for i := 0; i < len(serviceIdPairs); i += 2 {
 			exist := false
@@ -216,28 +217,29 @@ func WithUserAttachmentFilter(creator Creator, filter ...AttachmentFilter) Optio
 }
 
 // Start fetch and download
-func (k *Kemono) Start() {
+func (k *Kemono) Start() error {
 	// initialize the creators
 	if len(k.creators) == 0 {
 		// fetch creators from kemono
 		cs, err := k.FetchCreators()
 		if err != nil {
-			panic(err)
+			return err
 		}
 		k.creators = cs
 	}
 
 	//find creators
 	if len(k.users) != 0 {
-		var exit []Creator
+		var creators []Creator
 		for _, user := range k.users {
 			c, ok := FindCreator(k.creators, user.Id, user.Service)
 			if !ok {
-				panic(fmt.Sprintf("user %s not found", user.Id))
+				k.log.Printf("Creator %s:%s not found", user.Service, user.Id)
+				continue
 			}
-			exit = append(exit, c)
+			creators = append(creators, c)
 		}
-		k.users = exit
+		k.users = creators
 	} else {
 		k.users = k.creators
 	}
@@ -251,7 +253,7 @@ func (k *Kemono) Start() {
 		// fetch posts
 		posts, err := k.FetchPosts(creator.Service, creator.Id)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		// filter posts
 		posts = k.FilterPosts(posts)
@@ -271,9 +273,10 @@ func (k *Kemono) Start() {
 		// download posts
 		err = k.DownloadPosts(creator, posts)
 		if err != nil {
-			panic(err)
+			return err
 		}
 	}
+	return nil
 }
 
 func (k *Kemono) addCreatorFilter(filter ...CreatorFilter) {

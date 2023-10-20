@@ -382,6 +382,7 @@ func main() {
 	}
 
 	ctx := context.Background()
+	defer ctx.Done()
 
 	terminal := term.NewTerminal(colorable.NewColorableStdout(), colorable.NewColorableStderr(), false)
 	go terminal.Run(ctx)
@@ -477,17 +478,18 @@ func main() {
 
 	if k {
 		terminal.Print("Downloading Kemono")
-		KKemono.Start()
+		err := KKemono.Start()
+		if err != nil {
+			log.Printf("kemono start failed: %s", err)
+		}
 	}
 	if c {
 		terminal.Print("Downloading Coomer")
-		KCoomer.Start()
+		err := KCoomer.Start()
+		if err != nil {
+			log.Printf("coomer start failed: %s", err)
+		}
 	}
-
-	defer func() {
-		ctx.Done()
-	}()
-
 }
 
 func parasLink(link string) (s, service, userId, postId string) {
@@ -540,7 +542,7 @@ func parasData(data string) time.Time {
 	if err != nil {
 		log.Fatalf("invalid date %s", data)
 	}
-	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.Local)
+	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 }
 
 func setFlag() {
