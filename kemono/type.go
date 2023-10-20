@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/elvis972602/kemono-scraper/utils"
+	"github.com/spf13/cast"
 	"net/url"
 	"path/filepath"
 	"time"
@@ -110,9 +111,9 @@ type PostRaw struct {
 
 func (p PostRaw) ParasTime() Post {
 	var post Post
-	post.Added, _ = time.Parse(time.RFC1123, p.Added)
-	post.Edited, _ = time.Parse(time.RFC1123, p.Edited)
-	post.Published, _ = time.Parse(time.RFC1123, p.Published)
+	post.Added, _ = cast.StringToDate(p.Added)
+	post.Edited, _ = cast.StringToDate(p.Edited)
+	post.Published, _ = cast.StringToDate(p.Published)
 	post.Id = p.Id
 	post.Service = p.Service
 	post.Title = p.Title
