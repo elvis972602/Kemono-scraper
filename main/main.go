@@ -7,11 +7,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/elvis972602/kemono-scraper/downloader"
-	"github.com/elvis972602/kemono-scraper/kemono"
-	"github.com/elvis972602/kemono-scraper/term"
-	"github.com/elvis972602/kemono-scraper/utils"
-	"github.com/mattn/go-colorable"
 	"log"
 	"net/http"
 	"net/url"
@@ -22,6 +17,12 @@ import (
 	"strings"
 	tmpl "text/template"
 	"time"
+
+	"github.com/elvis972602/kemono-scraper/downloader"
+	"github.com/elvis972602/kemono-scraper/kemono"
+	"github.com/elvis972602/kemono-scraper/term"
+	"github.com/elvis972602/kemono-scraper/utils"
+	"github.com/mattn/go-colorable"
 )
 
 const (
@@ -403,7 +404,7 @@ func main() {
 		k = true
 		options[Kemono] = append(options[Kemono], sharedOptions...)
 		options[Kemono] = append(options[Kemono], kemono.WithDomain("kemono"))
-		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://kemono.party"))
+		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://kemono.su"))
 		token, err := utils.GenerateToken(16)
 		if err != nil {
 			log.Fatalf("generate token failed: %s", err)
@@ -413,14 +414,14 @@ func main() {
 				Name:   "__ddg2",
 				Value:  token,
 				Path:   "/",
-				Domain: ".kemono.party",
+				Domain: ".kemono.su",
 				Secure: false,
 			},
 		}))
 		downloaderOptions = append(downloaderOptions, downloader.WithHeader(downloader.Header{
-			"Host":                      "kemono.party",
+			"Host":                      "kemono.su",
 			"User-Agent":                downloader.UserAgent,
-			"Referer":                   "https://kemono.party",
+			"Referer":                   "https://kemono.su",
 			"Accept":                    downloader.Accept,
 			"Accept-Language":           downloader.AcceptLanguage,
 			"Accept-Encoding":           downloader.AcceptEncoding,
@@ -441,7 +442,7 @@ func main() {
 		c = true
 		options[Coomer] = append(options[Coomer], sharedOptions...)
 		options[Coomer] = append(options[Coomer], kemono.WithDomain("coomer"))
-		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://coomer.party"))
+		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://coomer.su"))
 		token, err := utils.GenerateToken(16)
 		if err != nil {
 			log.Fatalf("generate token failed: %s", err)
@@ -451,13 +452,13 @@ func main() {
 				Name:   "__ddg2",
 				Value:  token,
 				Path:   "/",
-				Domain: ".coomer.party",
+				Domain: ".coomer.su",
 			},
 		}))
 		downloaderOptions = append(downloaderOptions, downloader.WithHeader(downloader.Header{
-			"Host":                      "coomer.party",
+			"Host":                      "coomer.su",
 			"User-Agent":                downloader.UserAgent,
-			"Referer":                   "https://coomer.party/",
+			"Referer":                   "https://coomer.su/",
 			"Accept":                    downloader.Accept,
 			"Accept-Language":           downloader.AcceptLanguage,
 			"Accept-Encoding":           downloader.AcceptEncoding,
@@ -498,7 +499,7 @@ func parasLink(link string) (s, service, userId, postId string) {
 		log.Fatal("invalid url")
 	}
 
-	pattern := `(?i)^(?:.*\.)?(kemono|coomer)\.(?:party|su)$`
+	pattern := `(?i)^(?:.*\.)?(kemono|coomer)\.su$`
 	re := regexp.MustCompile(pattern)
 
 	matchedSubstrings := re.FindStringSubmatch(u.Host)
@@ -664,7 +665,6 @@ func setFlag() {
 	if !passedFlags["cookie"] && config["cookie"] != nil {
 		cookieFile = config["cookie"].(string)
 	}
-
 }
 
 func DirectoryName(p kemono.Post) string {
@@ -672,7 +672,7 @@ func DirectoryName(p kemono.Post) string {
 }
 
 func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCreator {
-	log.Printf("fetching favorite creators from %s.party", s)
+	log.Printf("fetching favorite creators from %s.su", s)
 	var client *http.Client
 	client = http.DefaultClient
 	if proxy != "" {
@@ -685,11 +685,11 @@ func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCre
 		downloader.AddProxy(proxy, client.Transport.(*http.Transport))
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.party/api/v1/account/favorites?type=user", s), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.su/api/v1/account/favorites?type=user", s), nil)
 	if err != nil {
 		log.Fatalf("Error creating request: %s", err)
 	}
-	req.Header.Set("Host", fmt.Sprintf("%s.party", s))
+	req.Header.Set("Host", fmt.Sprintf("%s.su", s))
 	for _, v := range cookie {
 		req.AddCookie(v)
 	}
@@ -710,7 +710,7 @@ func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCre
 }
 
 func fetchFavoritePosts(s string, cookie []*http.Cookie) []kemono.PostRaw {
-	log.Printf("fetching favorite posts from %s.party", s)
+	log.Printf("fetching favorite posts from %s.su", s)
 	var client *http.Client
 	client = http.DefaultClient
 	if proxy != "" {
@@ -722,11 +722,11 @@ func fetchFavoritePosts(s string, cookie []*http.Cookie) []kemono.PostRaw {
 		}
 		downloader.AddProxy(proxy, client.Transport.(*http.Transport))
 	}
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.party/api/v1/account/favorites?type=post", s), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.su/api/v1/account/favorites?type=post", s), nil)
 	if err != nil {
 		log.Fatalf("Error creating request: %s", err)
 	}
-	req.Header.Set("Host", fmt.Sprintf("%s.party", s))
+	req.Header.Set("Host", fmt.Sprintf("%s.su", s))
 	for _, v := range cookie {
 		req.AddCookie(v)
 	}

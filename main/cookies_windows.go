@@ -4,11 +4,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/elvis972602/kemono-scraper/main/cookie"
 	"log"
 	"net/http"
 	"os"
 	"runtime"
+
+	"github.com/elvis972602/kemono-scraper/main/cookie"
 )
 
 func getCookies(s string) []*http.Cookie {
@@ -33,7 +34,7 @@ func getCookies(s string) []*http.Cookie {
 	}
 	cs := c.GetCookies()
 	for _, v := range cs {
-		if v.Domain == fmt.Sprintf("%s.party", s) || v.Domain == fmt.Sprintf(".%s.party", s) {
+		if v.Domain == fmt.Sprintf("%s.su", s) || v.Domain == fmt.Sprintf(".%s.su", s) {
 			cookies = append(cookies, v)
 		}
 	}
