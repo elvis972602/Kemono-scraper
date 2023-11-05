@@ -64,7 +64,7 @@ Windows can detect the cookie file automatically (Not supported in no_cookies_de
 
 `--min-size string`: download post with size greater than min-size (e.g. 1 MB, 1KB, 1.5 gb, etc.)
 
-## Downloade options
+## Downloader options
 
 `--output PATH`: output path
 
