@@ -211,7 +211,7 @@ func (t *Terminal) runWithoutStatus(ctx context.Context) {
 	}
 }
 
-//  clear the previously written status lines
+// clear the previously written status lines
 func (t *Terminal) undoStatus(lines int) {
 	for i := 0; i < lines; i++ {
 		t.clearCurrentLine(t.wr, t.fd)

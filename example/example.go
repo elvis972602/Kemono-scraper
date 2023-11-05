@@ -2,20 +2,21 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/elvis972602/kemono-scraper/downloader"
 	"github.com/elvis972602/kemono-scraper/kemono"
 	"github.com/elvis972602/kemono-scraper/term"
 	"github.com/elvis972602/kemono-scraper/utils"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 func main() {
 	t := term.NewTerminal(os.Stdout, os.Stderr, false)
 
 	d := downloader.NewDownloader(
-		downloader.BaseURL("https://kemono.party"),
+		downloader.BaseURL("https://kemono.su"),
 		// the amount of download at the same time
 		downloader.MaxConcurrent(3),
 		downloader.Timeout(300*time.Second),
@@ -35,7 +36,7 @@ func main() {
 		}),
 		downloader.WithHeader(downloader.Header{
 			"User-Agent":      downloader.UserAgent,
-			"Referer":         "https://kemono.party",
+			"Referer":         "https://kemono.su",
 			"accept":          downloader.Accept,
 			"accept-encoding": "gzip, deflate, br",
 			"accept-language": "ja-JP;q=0.8,ja;q=0.7,en-US;q=0.6,en;q=0.5",

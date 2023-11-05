@@ -1,18 +1,18 @@
 # Kemono-scraper
-A simple downloader to  download images from kemono.party
+A simple downloader to  download images from kemono.su
 
 ## Flag Option
 
 ### Cookie File
-only needed if you want to download favorite creators or posts  
-  
-`--cookie PATH`  
-cookie file, default is cookies.txt (value separate by whitespace)  
-syntax:  
+only needed if you want to download favorite creators or posts
+
+`--cookie PATH`
+cookie file, default is cookies.txt (value separate by whitespace)
+syntax:
 
 | Domain        | Include subdomains | Path | Secure | Expiry     | Name        | Value   |
 |---------------|--------------------|------|--------|------------|-------------|---------|
-| .kemono.party | FALSE              | /    | TRUE   | 1706755572 | kemono_auth | <value> |
+| .kemono.su    | FALSE              | /    | TRUE   | 1706755572 | kemono_auth | <value> |
 
 you can get cookies easily by using Chrome extension [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
 #### Windows
@@ -149,4 +149,3 @@ go build -tags=no_cookies_detection
 
 ## Features
 With Kemono-scraper, you can implement a Downloader to take advantage of features such as multi-connection downloading, resume broken downloads, and more.
-
