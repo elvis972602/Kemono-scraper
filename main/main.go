@@ -167,10 +167,7 @@ func main() {
 	if first != 0 {
 		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.NumbFilter(func(i int) bool {
-				if i <= first {
-					return true
-				}
-				return false
+				return i <= first
 			}),
 		))
 	}
@@ -179,51 +176,48 @@ func main() {
 	if last != 0 {
 		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.NumbFilter(func(i int) bool {
-				if i >= last {
-					return true
-				}
-				return false
+				return i >= last
 			}),
 		))
 	}
 
 	if date != 0 {
-		t := parasData(strconv.Itoa(date))
+		t := parasData(date)
 		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.ReleaseDateFilter(t.Add(-1), t.Add(24*time.Hour-1)),
 		))
 	}
 
 	if dateBefore != 0 {
-		t := parasData(strconv.Itoa(dateBefore))
+		t := parasData(dateBefore)
 		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.ReleaseDateBeforeFilter(t),
 		))
 	}
 
 	if dateAfter != 0 {
-		t := parasData(strconv.Itoa(dateAfter))
+		t := parasData(dateAfter)
 		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.ReleaseDateAfterFilter(t),
 		))
 	}
 
 	if update != 0 {
-		t := parasData(strconv.Itoa(update))
+		t := parasData(update)
 		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.EditDateFilter(t.Add(-1), t.Add(24*time.Hour-1)),
 		))
 	}
 
 	if updateBefore != 0 {
-		t := parasData(strconv.Itoa(updateBefore))
+		t := parasData(updateBefore)
 		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.EditDateBeforeFilter(t),
 		))
 	}
 
 	if updateAfter != 0 {
-		t := parasData(strconv.Itoa(updateAfter))
+		t := parasData(updateAfter)
 		sharedOptions = append(sharedOptions, kemono.WithPostFilter(
 			kemono.EditDateAfterFilter(t),
 		))
@@ -527,22 +521,16 @@ func parasLink(link string) (s, service, userId, postId string) {
 	return
 }
 
-func parasData(data string) time.Time {
-	if len(data) != 8 {
+func parasData(data int) time.Time {
+	// exactly 8 digits
+	if data > 9999_9999 || data < 1000_0000 {
 		log.Fatalf("invalid date %s", data)
 	}
-	year, err := strconv.Atoi(data[:4])
-	if err != nil {
-		log.Fatalf("invalid date %s", data)
-	}
-	month, err := strconv.Atoi(data[4:6])
-	if err != nil {
-		log.Fatalf("invalid date %s", data)
-	}
-	day, err := strconv.Atoi(data[6:])
-	if err != nil {
-		log.Fatalf("invalid date %s", data)
-	}
+
+	year := data / 10000
+	month := (data / 100) % 100
+	day := data % 100
+
 	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 }
 
