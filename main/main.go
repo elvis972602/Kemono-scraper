@@ -31,6 +31,7 @@ const (
 )
 
 var (
+	pageLimit = flag.Int("pages", 2, "Number of pages to fetch")
 	creators               []string
 	links                  []string
 	options                map[string][]kemono.Option
@@ -436,6 +437,7 @@ func main() {
 		}))
 		KemonoDownloader = downloader.NewDownloader(downloaderOptions...)
 		options[Kemono] = append(options[Kemono], kemono.SetDownloader(KemonoDownloader))
+		options[Kemono] = append(options[Kemono], kemono.SetPageLimit(*pageLimit))
 		KKemono = kemono.NewKemono(options[Kemono]...)
 	}
 	if len(options[Coomer]) > 0 {

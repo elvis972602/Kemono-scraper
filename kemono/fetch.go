@@ -92,7 +92,7 @@ func (k *Kemono) FetchPosts(service, id string) (posts []Post, err error) {
 		return fmt.Errorf("fetch post list error: maximum retry count exceeded"), false
 	}
 
-	for i := 0; ; i++ {
+	for i := 0; i < k.pageLimit; i++ {
 		err, finish := fetch(i)
 		if err != nil {
 			return nil, err
@@ -100,8 +100,10 @@ func (k *Kemono) FetchPosts(service, id string) (posts []Post, err error) {
 		if finish {
 			break
 		}
+		
+		time.Sleep(2 * time.Second)
 	}
-	return
+	return posts, nil
 }
 
 // DownloadPosts download posts

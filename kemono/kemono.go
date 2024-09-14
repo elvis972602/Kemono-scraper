@@ -52,7 +52,7 @@ type Kemono struct {
 
 	// Creator filter
 	creatorFilters []CreatorFilter
-
+	pageLimit int // Add this field to store the page limit
 	// Post filter map[creator(<service>:<id>)][]PostFilter
 	postFilters map[string][]PostFilter
 
@@ -81,6 +81,7 @@ func NewKemono(options ...Option) *Kemono {
 		attachmentFilters: make(map[string][]AttachmentFilter),
 		retry:             3,
 		retryInterval:     5 * time.Second,
+		pageLimit:	   2,
 	}
 	for _, option := range options {
 		option(k)
@@ -160,6 +161,12 @@ func SetDownloader(downloader Downloader) Option {
 	return func(k *Kemono) {
 		k.Downloader = downloader
 	}
+}
+
+func SetPageLimit(limit int) Option {
+    return func(k *Kemono) {
+        k.pageLimit = limit // Assuming `pageLimit` is a field in your `Kemono` struct
+    }
 }
 
 // SetLog set log
@@ -251,7 +258,7 @@ func (k *Kemono) Start() error {
 	k.log.Printf("Start download %d creators", len(k.users))
 	for _, creator := range k.users {
 		// fetch posts
-		posts, err := k.FetchPosts(creator.Service, creator.Id)
+		posts, err := k.FetchPosts(creator.Service, creator.Id, )
 		if err != nil {
 			return err
 		}
