@@ -442,7 +442,7 @@ func main() {
 		c = true
 		options[Coomer] = append(options[Coomer], sharedOptions...)
 		options[Coomer] = append(options[Coomer], kemono.WithDomain("coomer"))
-		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://coomer.su"))
+		downloaderOptions = append(downloaderOptions, downloader.BaseURL("https://coomer.cr"))
 		token, err := utils.GenerateToken(16)
 		if err != nil {
 			log.Fatalf("generate token failed: %s", err)
@@ -452,13 +452,13 @@ func main() {
 				Name:   "__ddg2",
 				Value:  token,
 				Path:   "/",
-				Domain: ".coomer.su",
+				Domain: ".coomer.cr",
 			},
 		}))
 		downloaderOptions = append(downloaderOptions, downloader.WithHeader(downloader.Header{
-			"Host":                      "coomer.su",
+			"Host":                      "coomer.cr",
 			"User-Agent":                downloader.UserAgent,
-			"Referer":                   "https://coomer.su/",
+			"Referer":                   "https://coomer.cr/",
 			"Accept":                    downloader.Accept,
 			"Accept-Language":           downloader.AcceptLanguage,
 			"Accept-Encoding":           downloader.AcceptEncoding,
@@ -672,7 +672,7 @@ func DirectoryName(p kemono.Post) string {
 }
 
 func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCreator {
-	log.Printf("fetching favorite creators from %s.su", s)
+	log.Printf("fetching favorite creators from %s.cr", s)
 	var client *http.Client
 	client = http.DefaultClient
 	if proxy != "" {
@@ -685,11 +685,11 @@ func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCre
 		downloader.AddProxy(proxy, client.Transport.(*http.Transport))
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.su/api/v1/account/favorites?type=user", s), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.cr/api/v1/account/favorites?type=user", s), nil)
 	if err != nil {
 		log.Fatalf("Error creating request: %s", err)
 	}
-	req.Header.Set("Host", fmt.Sprintf("%s.su", s))
+	req.Header.Set("Host", fmt.Sprintf("%s.cr", s))
 	for _, v := range cookie {
 		req.AddCookie(v)
 	}
@@ -710,7 +710,7 @@ func fetchFavoriteCreators(s string, cookie []*http.Cookie) []kemono.FavoriteCre
 }
 
 func fetchFavoritePosts(s string, cookie []*http.Cookie) []kemono.PostRaw {
-	log.Printf("fetching favorite posts from %s.su", s)
+	log.Printf("fetching favorite posts from %s.cr", s)
 	var client *http.Client
 	client = http.DefaultClient
 	if proxy != "" {
@@ -722,11 +722,11 @@ func fetchFavoritePosts(s string, cookie []*http.Cookie) []kemono.PostRaw {
 		}
 		downloader.AddProxy(proxy, client.Transport.(*http.Transport))
 	}
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.su/api/v1/account/favorites?type=post", s), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s.cr/api/v1/account/favorites?type=post", s), nil)
 	if err != nil {
 		log.Fatalf("Error creating request: %s", err)
 	}
-	req.Header.Set("Host", fmt.Sprintf("%s.su", s))
+	req.Header.Set("Host", fmt.Sprintf("%s.cr", s))
 	for _, v := range cookie {
 		req.AddCookie(v)
 	}
